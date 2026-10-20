@@ -12,3 +12,8 @@ def health() -> dict[str, str]:
     return {
         "message": "Hello Mohammad"
         }
+
+
+@app.get("/version")
+def version():
+    return {"version": "0.1.0"}
