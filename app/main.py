@@ -17,3 +17,10 @@ def health() -> dict[str, str]:
 @app.get("/version")
 def version():
     return {"version": "0.1.0"}
+
+@app.get("/products")
+def get_products():
+    return [
+        {"id": 1, "name": "T-Shirt", "price": 19.99},
+        {"id": 2, "name": "Jeans", "price": 49.99},
+    ]
