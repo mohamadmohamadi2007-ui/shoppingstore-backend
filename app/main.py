@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from app.schemas import Product
 
 app = FastAPI(title="ShoppingStore Backend")
 
@@ -13,12 +14,11 @@ def health() -> dict[str, str]:
         "message": "Hello Mohammad"
         }
 
-
 @app.get("/version")
 def version():
     return {"version": "0.1.0"}
 
-@app.get("/products")
+@app.get("/products", response_model=list[Product])
 def get_products():
     return [
         {"id": 1, "name": "T-Shirt", "price": 19.99},
