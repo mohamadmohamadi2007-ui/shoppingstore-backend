@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from app.schemas import Product
+from app.schemas import Product, ProductCreate
 
 app = FastAPI(title="ShoppingStore Backend")
 
@@ -12,16 +12,6 @@ PRODUCTS = [
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
-@app.get("/hello_world")
-def health() -> dict[str, str]:
-    return {
-        "message": "Hello Mohammad"
-        }
-
-@app.get("/version")
-def version():
-    return {"version": "0.1.0"}
-
 @app.get("/products", response_model=list[Product])
 def get_products():
     return PRODUCTS
@@ -32,3 +22,12 @@ def get_product(product_id: int):
         if p["id"] == product_id:
             return p
     raise HTTPException(status_code=404, detail="Product not found")
+
+
+@app.post("/products", response_model=Product, status_code=201)
+def create_product(product: ProductCreate):
+    new_id = max(
+        (p["id"] for p in PRODUCTS), default=0) + 1
+    new_product = {"id": new_id, "name": product.name, "price": product.price}
+    PRODUCTS.append(new_product)
+    return new_product
