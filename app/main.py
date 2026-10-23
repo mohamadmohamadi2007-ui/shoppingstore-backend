@@ -21,9 +21,23 @@ def on_startup():
             session.commit()
 
 
+
 @app.get("/products", response_model=list[Product])
-def list_products(session: Session = Depends(get_session)):
-    return session.exec(select(Product)).all()
+def list_products(
+    min_price: float | None = None,
+    max_price: float | None = None,
+    name: str | None = None,
+    session: Session = Depends(get_session),
+):
+    query = select(Product)
+    if min_price is not None:
+        query = query.where(Product.price >= min_price)
+    if max_price is not None:
+        query = query.where(Product.price <= max_price)
+    if name is not None:
+        query = query.where(Product.name.contains(name))
+    return session.exec(query).all()
+
 
 @app.get("/products/{product_id}", response_model=Product)
 def get_product(product_id: int, session: Session = Depends(get_session)):
