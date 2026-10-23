@@ -10,7 +10,6 @@ PRODUCTS = [
     {"id": 2, "name": "Jeans", "price": 49.99},
 ]
 
-
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
@@ -20,13 +19,13 @@ def on_startup():
             session.add(Product(name="Jeans", price=49.99))
             session.commit()
 
-
-
 @app.get("/products", response_model=list[Product])
 def list_products(
     min_price: float | None = None,
     max_price: float | None = None,
     name: str | None = None,
+    skip: int = 0,
+    limit: int = 10,
     session: Session = Depends(get_session),
 ):
     query = select(Product)
@@ -36,8 +35,8 @@ def list_products(
         query = query.where(Product.price <= max_price)
     if name is not None:
         query = query.where(Product.name.contains(name))
+    query = query.offset(skip).limit(limit)
     return session.exec(query).all()
-
 
 @app.get("/products/{product_id}", response_model=Product)
 def get_product(product_id: int, session: Session = Depends(get_session)):
@@ -65,7 +64,6 @@ def update_product(product_id: int, product: ProductCreate,  session: Session = 
     session.commit()
     session.refresh(db_product)
     return db_product
-
 
 @app.delete("/products/{product_id}", status_code=204)
 def delete_product(product_id: int, session: Session = Depends(get_session)):
