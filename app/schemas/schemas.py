@@ -12,12 +12,3 @@ class Product(ProductBase, table=True):
 
 class ProductCreate(ProductBase):
     pass
-
-# class Product(BaseModel):
-#     id: int
-#     name: str
-#     price: float
-
-# class ProductCreate(BaseModel):
-#     name: str
-#     price: float

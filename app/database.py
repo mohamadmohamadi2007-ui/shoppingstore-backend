@@ -1,8 +1,7 @@
 from sqlmodel import SQLModel, Session, create_engine
+from app.config import settings
 
-sqlite_url = "sqlite:///./shop.db"
-engine = create_engine(sqlite_url, echo=True)
-
+engine = create_engine(settings.database_url, echo=True)
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
