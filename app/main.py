@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from app.database import engine, create_db_and_tables
 from app.api.products import router as products_router
 from app.api.variants import router as variants_router
+from app.api.carts import router as carts_router
+from app.api.orders import router as orders_router
 from app.schemas import Product, Category, Variant
 from sqlmodel import Session, select
 
@@ -48,3 +50,5 @@ def on_startup():
 
 app.include_router(products_router)
 app.include_router(variants_router)
+app.include_router(carts_router)
+app.include_router(orders_router)
