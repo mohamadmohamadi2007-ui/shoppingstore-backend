@@ -1,13 +1,17 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from app.database import engine, create_db_and_tables
 from app.api.products import router as products_router
 from app.api.variants import router as variants_router
 from app.api.carts import router as carts_router
 from app.api.orders import router as orders_router
+from app.api.product_specs import router as product_specs_router
+from app.api.images import router as images_router
 from app.schemas import Product, Category, Variant
 from sqlmodel import Session, select
 
 app = FastAPI(title="ShoppingStore Backend")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.on_event("startup")
@@ -52,3 +56,5 @@ app.include_router(products_router)
 app.include_router(variants_router)
 app.include_router(carts_router)
 app.include_router(orders_router)
+app.include_router(product_specs_router)
+app.include_router(images_router)

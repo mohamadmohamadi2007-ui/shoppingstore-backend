@@ -16,5 +16,8 @@ class ProductImage(ProductImageBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
 
-class ProductImageCreate(ProductImageBase):
-    pass
+class ProductImageCreate(SQLModel):
+    variant_id: int | None = None
+    url: str
+    sort_order: int = 0
+    is_primary: bool = False

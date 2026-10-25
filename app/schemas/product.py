@@ -37,5 +37,7 @@ class ProductSpec(ProductSpecBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
 
-class ProductSpecCreate(ProductSpecBase):
-    pass
+class ProductSpecCreate(SQLModel):
+    fabric: str
+    care_instructions: str
+    origin_country: str
