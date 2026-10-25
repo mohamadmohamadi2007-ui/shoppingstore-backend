@@ -14,8 +14,8 @@ Curriculum rule still applies: **steps 1–9 — no AI, you write the code.
 Step 10 onward — AI can write it, you review it.**
 
 ## Status
-- ✅ Steps 1–12 done (foundations through DB write path + query filtering)
-- ▶ Step 13 — next (pagination)
+- ✅ Steps 1–17 done (foundations through real DB table design — Postgres, Category/Product/Variant CRUD)
+- ▶ Step 18 — next (relational data & transactions — Orders/OrderItems/Cart)
 
 ## See also
 - `DECISIONS.md` — reasoning behind choices made along the way.

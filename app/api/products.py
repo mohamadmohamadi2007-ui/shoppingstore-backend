@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session
-from app.schemas import Product, ProductCreate
+from app.schemas import Product, ProductCreate, ProductUpdate
 from app.database import get_session
 from app.services import product_service
 
@@ -33,7 +33,7 @@ def create_product(product: ProductCreate, session: Session = Depends(get_sessio
 
 
 @router.put("/products/{product_id}", response_model=Product)
-def update_product(product_id: int, product: ProductCreate, session: Session = Depends(get_session)):
+def update_product(product_id: int, product: ProductUpdate, session: Session = Depends(get_session)):
     db_product = product_service.update_product(session, product_id, product)
     if not db_product:
         raise HTTPException(status_code=404, detail="Product not found")
