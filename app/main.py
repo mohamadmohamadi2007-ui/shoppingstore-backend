@@ -7,7 +7,8 @@ from app.api.carts import router as carts_router
 from app.api.orders import router as orders_router
 from app.api.product_specs import router as product_specs_router
 from app.api.images import router as images_router
-from app.schemas import Product, Category, Variant
+from app.api.auth import router as auth_router
+from app.schemas import Product, Category, Variant, Customer
 from sqlmodel import Session, select
 
 app = FastAPI(title="ShoppingStore Backend")
@@ -46,8 +47,11 @@ def on_startup():
                 sku="BRA001-34B-WHT", 
                 band="34", 
                 cup="B", 
-                color="White", 
+                color="White",
                 stock_qty=5))
+            session.commit()
+        if not session.exec(select(Customer)).first():
+            session.add(Customer(phone_number="09120000001"))
             session.commit()
 
 
@@ -57,3 +61,4 @@ app.include_router(carts_router)
 app.include_router(orders_router)
 app.include_router(product_specs_router)
 app.include_router(images_router)
+app.include_router(auth_router)

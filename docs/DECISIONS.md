@@ -26,3 +26,27 @@ as the table design and backend/frontend data contract (see product-level
 `../../docs/DECISIONS.md` for the full note). The "-draft" filenames are kept
 as-is so existing links don't break; "confirmed" status is tracked here, not
 in the filename.
+
+## 2026-10-26 — Step 20 auth: OTP stays mocked, JWT via PyJWT, Customer table added
+
+Three choices made for the OTP/JWT authentication step:
+
+- **OTP delivery is mocked for now.** No SMS gateway is wired up (that's
+  step 25 — payment/courier/notification integrations are grouped there).
+  `POST /auth/otp/request` generates and hashes (SHA-256) a 6-digit code with
+  a 5-minute expiry, and echoes it back as `debug_otp` in the response body
+  whenever `ENVIRONMENT != "production"`. This must be removed (or the
+  `ENVIRONMENT` check must actually be set to `production`) before any real
+  deploy — flagging it here so step 27 (security hardening pass) catches it
+  if it's somehow missed.
+- **JWT via PyJWT**, not `python-jose` — more actively maintained, no
+  outstanding CVEs at the time of writing. Single access token (HS256,
+  7-day expiry by default, configurable via `JWT_EXPIRE_MINUTES`), no
+  refresh-token flow yet — not needed until there's a reason to shorten
+  access-token lifetime, which isn't the case pre-launch.
+- **`Customer` table added**, since none existed — `Order.customer_id` and
+  `Cart.customer_id` were previously bare, unconstrained integers. Both now
+  carry a real FK to `customer.id` (migration `eff697875deb`). Cart/Order
+  creation still accept a client-supplied `customer_id` directly; wiring
+  them to the authenticated identity from the JWT instead of a trusted
+  client value is step 21's job (authorization/IDOR), not this one's.

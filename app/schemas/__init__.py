@@ -4,3 +4,4 @@ from app.schemas.variant import Variant, VariantBase, VariantCreate, VariantUpda
 from app.schemas.cart import Cart, CartBase, CartItem, CartItemRead, CartItemBase, CartCreate, CartRead, CartItemCreate, CartItemUpdate
 from app.schemas.order import Order, OrderBase, OrderItem, OrderItemBase, OrderItemRead, OrderRead
 from app.schemas.image import ProductImage, ProductImageBase, ProductImageCreate
+from app.schemas.customer import Customer, CustomerBase, CustomerRead

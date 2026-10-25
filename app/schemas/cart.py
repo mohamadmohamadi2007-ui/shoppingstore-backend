@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 
 class CartBase(SQLModel):
-    customer_id: int
+    customer_id: int = Field(foreign_key="customer.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class Cart(CartBase, table= True):

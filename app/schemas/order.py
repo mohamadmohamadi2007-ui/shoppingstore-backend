@@ -4,7 +4,7 @@ from app.schemas.variant import Variant
 
 
 class OrderBase(SQLModel):
-    customer_id: int
+    customer_id: int = Field(foreign_key="customer.id")
     status: str = "pending"
     total: float = 0 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
