@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from app.database import engine, create_db_and_tables
+from app.database import engine
 from app.api.products import router as products_router
 from app.api.variants import router as variants_router
 from app.api.carts import router as carts_router
@@ -16,7 +16,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.on_event("startup")
 def on_startup():
-    create_db_and_tables()
     with Session(engine) as session:
         if not session.exec(select(Category)).first():
             session.add(Category(name="Bras", slug="bras"))
