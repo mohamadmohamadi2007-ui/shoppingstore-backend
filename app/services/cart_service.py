@@ -1,4 +1,5 @@
-from sqlmodel import Session
+from sqlmodel import Session, select
+from sqlalchemy.orm import selectinload
 from app.schemas import CartCreate, Cart, CartItemCreate, CartItem, CartItemUpdate
 
 
@@ -10,7 +11,8 @@ def create_cart(session: Session, cart: CartCreate):
     return db_cart
 
 def get_cart(session: Session, cart_id: int):
-    return session.get(Cart, cart_id) 
+    query = select(Cart).where(Cart.id == cart_id).options(selectinload(Cart.items))
+    return session.exec(query).first()
 
 def add_item(session: Session, cart_id: int, item: CartItemCreate):
     db_cart = session.get(Cart, cart_id)
