@@ -18,3 +18,11 @@ AI-assisted with human review.
 **Consequence:** the DB (started in Week 1) isn't actually wired into the
 app with SQLAlchemy until Week 13 — Products/Orders live in-memory until
 then. This is intentional, not an oversight.
+
+## 2026-10-24 — Schema v2 and API contract v1 confirmed
+
+`docs/schema-v2-draft.html` and `docs/api-contract-v1-draft.html` are locked
+as the table design and backend/frontend data contract (see product-level
+`../../docs/DECISIONS.md` for the full note). The "-draft" filenames are kept
+as-is so existing links don't break; "confirmed" status is tracked here, not
+in the filename.

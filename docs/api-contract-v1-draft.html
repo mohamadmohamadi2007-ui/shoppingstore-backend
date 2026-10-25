@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ShoppingStore — API &amp; Data Contract (v1 draft)</title>
+<style>
+  :root {
+    --fg: #1a1a1a; --muted: #666; --border: #ddd; --accent: #2a5cff; --pk: #0b6e4f; --fk: #a94442;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Arial, sans-serif; margin: 0; color: var(--fg); line-height: 1.5; }
+  header { padding: 20px 28px; border-bottom: 3px solid #333; }
+  header h1 { margin: 0 0 6px; font-size: 1.5em; }
+  header p { margin: 0; color: var(--muted); font-size: 0.92em; }
+  .status { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.75em; font-weight: 600; background: #fde9e9; color: var(--fk); vertical-align: middle; margin-left: 10px; }
+  nav.tabs { display: flex; border-bottom: 1px solid var(--border); background: #fafafa; position: sticky; top: 0; z-index: 10; }
+  nav.tabs button { border: none; background: none; padding: 14px 22px; font-size: 0.95em; cursor: pointer; border-bottom: 3px solid transparent; color: var(--muted); }
+  nav.tabs button.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  .tabpanel { display: none; }
+  .tabpanel.active { display: block; }
+
+  .layout { display: flex; align-items: flex-start; }
+  .sidebar { width: 250px; flex: none; position: sticky; top: 49px; max-height: calc(100vh - 49px); overflow-y: auto; padding: 18px 10px 40px 20px; border-right: 1px solid var(--border); font-size: 0.85em; }
+  .sidebar-list, .sidebar-list ul { list-style: none; margin: 0; padding: 0; }
+  .sidebar-list > li { margin-bottom: 14px; }
+  .sidebar-list a.grouplink { font-weight: 700; color: #222; text-decoration: none; }
+  .sidebar-list ul { margin-top: 4px; padding-left: 12px; border-left: 2px solid #eee; }
+  .sidebar-list ul li { margin: 3px 0; }
+  .sidebar-list ul a { color: var(--muted); text-decoration: none; font-size: 0.9em; font-family: monospace; }
+  .sidebar-list a:hover { color: var(--accent); }
+  .content { flex: 1; min-width: 0; padding: 18px 28px 60px; }
+
+  .group { margin-bottom: 36px; scroll-margin-top: 60px; }
+  .group h2 { font-size: 1.2em; border-bottom: 2px solid #333; padding-bottom: 6px; margin-top: 0; }
+  .tablecard { margin: 18px 0 30px; scroll-margin-top: 60px; }
+  .tablecard h3 { font-size: 1.02em; margin-bottom: 6px; }
+  .rowcount { font-size: 0.75em; color: var(--muted); font-weight: 400; }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.82em; }
+  th, td { border: 1px solid var(--border); padding: 5px 9px; text-align: left; }
+  th { background: #333; color: #fff; font-weight: 600; }
+  tr:nth-child(even) { background: #f7f7f7; }
+  .null { color: #aaa; font-style: italic; }
+
+  footer { padding: 20px 28px 50px; font-size: 0.85em; color: #777; border-top: 1px solid var(--border); margin-top: 20px; }
+
+  .intro { max-width: 900px; color: var(--muted); font-size: 0.92em; margin-bottom: 24px; }
+  .endpoint { border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; margin: 0 0 16px; scroll-margin-top: 60px; }
+  .ep-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .method { font-weight: 700; font-size: 0.78em; padding: 3px 10px; border-radius: 4px; color: #fff; }
+  .m-get { background: #2a5cff; } .m-post { background: #0b6e4f; } .m-patch { background: #b26a00; } .m-delete { background: #a94442; }
+  .path { font-size: 0.95em; font-weight: 600; }
+  .auth { margin-left: auto; font-size: 0.72em; padding: 2px 9px; border-radius: 10px; font-weight: 600; }
+  .auth-none { background: #eee; color: #555; }
+  .auth-customer { background: #e8f0fe; color: #2a5cff; }
+  .auth-admin { background: #fde9e9; color: #a94442; }
+  .summary { margin: 8px 0 10px; font-size: 0.92em; }
+  .reqresp-grid { display: flex; gap: 20px; flex-wrap: wrap; }
+  .reqresp { flex: 1 1 320px; min-width: 260px; }
+  .rr-label { font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 4px; font-weight: 700; }
+  table.mini { border-collapse: collapse; width: 100%; font-size: 0.82em; }
+  table.mini.wide { max-width: 700px; }
+  table.mini th, table.mini td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; white-space: normal; }
+  table.mini th { background: #333; color: #fff; }
+  .resp { font-size: 0.88em; background: #f7f7f7; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+  .none { font-size: 0.85em; color: #aaa; font-style: italic; }
+  .epnotes { margin: 10px 0 0; padding-left: 20px; font-size: 0.85em; color: var(--muted); }
+  .codeblock { background: #1e1e1e; color: #e6e6e6; padding: 12px 16px; border-radius: 6px; font-size: 0.85em; overflow-x: auto; }
+  h2 { font-size: 1.15em; border-bottom: 2px solid #333; padding-bottom: 6px; margin-top: 34px; }
+
+</style>
+</head>
+<body>
+<header>
+  <h1>ShoppingStore — API &amp; Data Contract <span class="status">DISCUSSION DRAFT — v1</span></h1>
+  <p>Companion to <code>schema-v2-draft.html</code> (DB tables) — this is the contract the frontend (Emma) builds
+  against. Not locked; open questions are flagged inline and summarized in the Conventions tab.</p>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="t1">Endpoints</button>
+  <button class="tab-btn" data-tab="t2">Data Contracts (DTOs)</button>
+  <button class="tab-btn" data-tab="t3">Conventions</button>
+</nav>
+
+<div id="t1" class="tabpanel active">
+<div class="layout">
+  <aside class="sidebar">
+    <ul class="sidebar-list"><li><a class="grouplink" href="#grp-auth">Auth (OTP)</a><ul><li><a href="#ep-auth-0">POST /api/v1/auth/otp/request</a></li><li><a href="#ep-auth-1">POST /api/v1/auth/otp/verify</a></li><li><a href="#ep-auth-2">GET /api/v1/users/me</a></li></ul></li>
+<li><a class="grouplink" href="#grp-categories">Categories</a><ul><li><a href="#ep-categories-0">GET /api/v1/categories</a></li><li><a href="#ep-categories-1">GET /api/v1/categories/{id}</a></li><li><a href="#ep-categories-2">POST /api/v1/admin/categories</a></li><li><a href="#ep-categories-3">PATCH /api/v1/admin/categories/{id}</a></li><li><a href="#ep-categories-4">DELETE /api/v1/admin/categories/{id}</a></li></ul></li>
+<li><a class="grouplink" href="#grp-products">Products &amp; Variants</a><ul><li><a href="#ep-products-0">GET /api/v1/products</a></li><li><a href="#ep-products-1">GET /api/v1/products/{id}</a></li><li><a href="#ep-products-2">POST /api/v1/admin/products</a></li><li><a href="#ep-products-3">PATCH /api/v1/admin/products/{id}</a></li><li><a href="#ep-products-4">POST /api/v1/admin/products/{id}/variants</a></li><li><a href="#ep-products-5">PATCH /api/v1/admin/variants/{id}</a></li><li><a href="#ep-products-6">POST /api/v1/admin/products/{id}/images</a></li><li><a href="#ep-products-7">DELETE /api/v1/admin/images/{id}</a></li></ul></li>
+<li><a class="grouplink" href="#grp-cart">Cart</a><ul><li><a href="#ep-cart-0">GET /api/v1/cart</a></li><li><a href="#ep-cart-1">POST /api/v1/cart/items</a></li><li><a href="#ep-cart-2">PATCH /api/v1/cart/items/{id}</a></li><li><a href="#ep-cart-3">DELETE /api/v1/cart/items/{id}</a></li></ul></li>
+<li><a class="grouplink" href="#grp-addresses">Addresses</a><ul><li><a href="#ep-addresses-0">GET /api/v1/addresses</a></li><li><a href="#ep-addresses-1">POST /api/v1/addresses</a></li><li><a href="#ep-addresses-2">PATCH /api/v1/addresses/{id}</a></li><li><a href="#ep-addresses-3">DELETE /api/v1/addresses/{id}</a></li></ul></li>
+<li><a class="grouplink" href="#grp-orders">Orders &amp; Checkout</a><ul><li><a href="#ep-orders-0">POST /api/v1/orders</a></li><li><a href="#ep-orders-1">GET /api/v1/orders</a></li><li><a href="#ep-orders-2">GET /api/v1/orders/{id}</a></li><li><a href="#ep-orders-3">POST /api/v1/orders/{id}/pay</a></li><li><a href="#ep-orders-4">POST /api/v1/payments/webhook/{gateway}</a></li></ul></li>
+<li><a class="grouplink" href="#grp-returns">Returns &amp; Reviews</a><ul><li><a href="#ep-returns-0">POST /api/v1/order-items/{order_item_id}/return-request</a></li><li><a href="#ep-returns-1">GET /api/v1/returns</a></li><li><a href="#ep-returns-2">GET /api/v1/admin/returns</a></li><li><a href="#ep-returns-3">PATCH /api/v1/admin/returns/{id}</a></li><li><a href="#ep-returns-4">GET /api/v1/products/{id}/comments</a></li><li><a href="#ep-returns-5">POST /api/v1/products/{id}/comments</a></li><li><a href="#ep-returns-6">DELETE /api/v1/admin/comments/{id}</a></li></ul></li>
+<li><a class="grouplink" href="#grp-admin_orders">Admin — Orders &amp; Shipping</a><ul><li><a href="#ep-admin_orders-0">GET /api/v1/admin/orders</a></li><li><a href="#ep-admin_orders-1">GET /api/v1/admin/orders/{id}</a></li><li><a href="#ep-admin_orders-2">PATCH /api/v1/admin/orders/{id}/status</a></li><li><a href="#ep-admin_orders-3">POST /api/v1/admin/orders/{id}/shipment</a></li></ul></li>
+<li><a class="grouplink" href="#grp-admin_misc">Admin — Dashboard &amp; Logs</a><ul><li><a href="#ep-admin_misc-0">GET /api/v1/admin/dashboard/summary</a></li><li><a href="#ep-admin_misc-1">GET /api/v1/admin/logs</a></li></ul></li></ul>
+  </aside>
+  <div class="content">
+    <p class="intro">All endpoints are prefixed <code>/api/v1</code>. Customer and Admin endpoints both use
+    <code>Authorization: Bearer &lt;token&gt;</code> — same JWT scheme, different role claim. See the
+    <strong>Conventions</strong> tab for pagination, error format and auth details.</p>
+    <div class="group" id="grp-auth"><h2>Auth (OTP)</h2>
+<div class="endpoint" id="ep-auth-0">
+  <div class="ep-head">
+    <span class="method m-post">POST</span>
+    <code class="path">/api/v1/auth/otp/request</code>
+    <span class="auth auth-none">Public</span>
+  </div>
+  <p class="summary">Request an OTP code for a mobile number (login or signup — same endpoint).</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>mobile_number</code></td><td>string</td><td>E.164-ish, Iran format e.g. 09123456789</td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>{ expires_in_seconds: int }</code></div></div>
+  </div>
+  <ul class="epnotes"><li>Rate-limited per mobile_number (exact limit TBD).</li><li>Writes a row to OTPCode with purpose=&#x27;login&#x27;.</li></ul>
+</div>
+<div class="endpoint" id="ep-auth-1">
+  <div class="ep-head">
+    <span class="method m-post">POST</span>
+    <code class="path">/api/v1/auth/otp/verify</code>
+    <span class="auth auth-none">Public</span>
+  </div>
+  <p class="summary">Verify the OTP code; creates the User on first success.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>mobile_number</code></td><td>string</td><td></td></tr><tr><td><code>code</code></td><td>string</td><td>6-digit</td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>{ access_token: string, token_type: &#x27;bearer&#x27;, user: UserDTO }</code></div></div>
+  </div>
+  <ul class="epnotes"><li>Marks OTPCode.used = true.</li><li>If no User exists for mobile_number yet, one is created (is_verified=true).</li></ul>
+</div>
+<div class="endpoint" id="ep-auth-2">
+  <div class="ep-head">
+    <span class="method m-get">GET</span>
+    <code class="path">/api/v1/users/me</code>
+    <span class="auth auth-customer">Customer (Bearer)</span>
+  </div>
+  <p class="summary">Current authenticated user&#x27;s profile.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div><div class="none">— none (path/query params only) —</div></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>UserDTO</code></div></div>
+  </div>
+  
+</div></div><div class="group" id="grp-categories"><h2>Categories</h2>
+<div class="endpoint" id="ep-categories-0">
+  <div class="ep-head">
+    <span class="method m-get">GET</span>
+    <code class="path">/api/v1/categories</code>
+    <span class="auth auth-none">Public</span>
+  </div>
+  <p class="summary">List categories as a tree (top-level with nested children).</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div><div class="none">— none (path/query params only) —</div></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>CategoryDTO[]</code></div></div>
+  </div>
+  <ul class="epnotes"><li>parent_id=null rows are roots; children nested under .children.</li></ul>
+</div>
+<div class="endpoint" id="ep-categories-1">
+  <div class="ep-head">
+    <span class="method m-get">GET</span>
+    <code class="path">/api/v1/categories/{id}</code>
+    <span class="auth auth-none">Public</span>
+  </div>
+  <p class="summary">Single category detail.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div><div class="none">— none (path/query params only) —</div></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>CategoryDTO</code></div></div>
+  </div>
+  
+</div>
+<div class="endpoint" id="ep-categories-2">
+  <div class="ep-head">
+    <span class="method m-post">POST</span>
+    <code class="path">/api/v1/admin/categories</code>
+    <span class="auth auth-admin">Admin (Bearer)</span>
+  </div>
+  <p class="summary">Create a category.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>name</code></td><td>string</td><td></td></tr><tr><td><code>slug</code></td><td>string</td><td></td></tr><tr><td><code>parent_id</code></td><td>int|null</td><td></td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>CategoryDTO</code></div></div>
+  </div>
+  <ul class="epnotes"><li>Writes AdminActionLog(action=&#x27;create_category&#x27;).</li></ul>
+</div>
+<div class="endpoint" id="ep-categories-3">
+  <div class="ep-head">
+    <span class="method m-patch">PATCH</span>
+    <code class="path">/api/v1/admin/categories/{id}</code>
+    <span class="auth auth-admin">Admin (Bearer)</span>
+  </div>
+  <p class="summary">Update a category.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>name</code></td><td>string?</td><td></td></tr><tr><td><code>slug</code></td><td>string?</td><td></td></tr><tr><td><code>parent_id</code></td><td>int|null?</td><td></td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>CategoryDTO</code></div></div>
+  </div>
+  
+</div>
+<div class="endpoint" id="ep-categories-4">
+  <div class="ep-head">
+    <span class="method m-delete">DELETE</span>
+    <code class="path">/api/v1/admin/categories/{id}</code>
+    <span class="auth auth-admin">Admin (Bearer)</span>
+  </div>
+  <p class="summary">Delete a category (blocked if it has products or child categories).</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div><div class="none">— none (path/query params only) —</div></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>204 No Content</code></div></div>
+  </div>
+  <ul class="epnotes"><li>409 Conflict if in use.</li></ul>
+</div></div><div class="group" id="grp-products"><h2>Products &amp; Variants</h2>
+<div class="endpoint" id="ep-products-0">
+  <div class="ep-head">
+    <span class="method m-get">GET</span>
+    <code class="path">/api/v1/products</code>
+    <span class="auth auth-none">Public</span>
+  </div>
+  <p class="summary">Browse/search/filter the catalog. Paginated.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>q</code></td><td>string?</td><td>free-text search on name</td></tr><tr><td><code>category_id</code></td><td>int?</td><td></td></tr><tr><td><code>min_price</code></td><td>int?</td><td>Rial</td></tr><tr><td><code>max_price</code></td><td>int?</td><td>Rial</td></tr><tr><td><code>page</code></td><td>int?</td><td>default 1</td></tr><tr><td><code>page_size</code></td><td>int?</td><td>default 20, max 100</td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>Paginated&lt;ProductListItemDTO&gt;</code></div></div>
+  </div>
+  <ul class="epnotes"><li>Only is_active=true products returned to customers.</li></ul>
+</div>
+<div class="endpoint" id="ep-products-1">
+  <div class="ep-head">
+    <span class="method m-get">GET</span>
+    <code class="path">/api/v1/products/{id}</code>
+    <span class="auth auth-none">Public</span>
+  </div>
+  <p class="summary">Full product detail: spec, all variants, images, rating summary.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div><div class="none">— none (path/query params only) —</div></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>ProductDetailDTO</code></div></div>
+  </div>
+  
+</div>
+<div class="endpoint" id="ep-products-2">
+  <div class="ep-head">
+    <span class="method m-post">POST</span>
+    <code class="path">/api/v1/admin/products</code>
+    <span class="auth auth-admin">Admin (Bearer)</span>
+  </div>
+  <p class="summary">Create a product (shared info only; variants added separately).</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>product_code</code></td><td>string</td><td></td></tr><tr><td><code>name</code></td><td>string</td><td></td></tr><tr><td><code>category_id</code></td><td>int</td><td></td></tr><tr><td><code>base_price</code></td><td>int</td><td>Rial</td></tr><tr><td><code>spec</code></td><td>object?</td><td>fabric/care_instructions/origin_country</td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>ProductDetailDTO</code></div></div>
+  </div>
+  
+</div>
+<div class="endpoint" id="ep-products-3">
+  <div class="ep-head">
+    <span class="method m-patch">PATCH</span>
+    <code class="path">/api/v1/admin/products/{id}</code>
+    <span class="auth auth-admin">Admin (Bearer)</span>
+  </div>
+  <p class="summary">Update product fields, including is_active (soft delete/relist).</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>name</code></td><td>string?</td><td></td></tr><tr><td><code>category_id</code></td><td>int?</td><td></td></tr><tr><td><code>base_price</code></td><td>int?</td><td></td></tr><tr><td><code>is_active</code></td><td>bool?</td><td></td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>ProductDetailDTO</code></div></div>
+  </div>
+  
+</div>
+<div class="endpoint" id="ep-products-4">
+  <div class="ep-head">
+    <span class="method m-post">POST</span>
+    <code class="path">/api/v1/admin/products/{id}/variants</code>
+    <span class="auth auth-admin">Admin (Bearer)</span>
+  </div>
+  <p class="summary">Add a variant (band+cup or size_label, color, SKU, stock).</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>sku</code></td><td>string</td><td>unique</td></tr><tr><td><code>band</code></td><td>int|null</td><td></td></tr><tr><td><code>cup</code></td><td>string|null</td><td></td></tr><tr><td><code>size_label</code></td><td>string|null</td><td>panties/shapewear</td></tr><tr><td><code>color</code></td><td>string</td><td></td></tr><tr><td><code>price_override</code></td><td>int|null</td><td>Rial</td></tr><tr><td><code>stock_qty</code></td><td>int</td><td></td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>VariantDTO</code></div></div>
+  </div>
+  <ul class="epnotes"><li>Exactly one of (band+cup) or size_label must be set — validated server-side.</li></ul>
+</div>
+<div class="endpoint" id="ep-products-5">
+  <div class="ep-head">
+    <span class="method m-patch">PATCH</span>
+    <code class="path">/api/v1/admin/variants/{id}</code>
+    <span class="auth auth-admin">Admin (Bearer)</span>
+  </div>
+  <p class="summary">Update a variant, most commonly stock_qty.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>stock_qty</code></td><td>int?</td><td></td></tr><tr><td><code>price_override</code></td><td>int|null?</td><td></td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>VariantDTO</code></div></div>
+  </div>
+  <ul class="epnotes"><li>Writes AdminActionLog(action=&#x27;update_stock&#x27;) when stock_qty changes.</li></ul>
+</div>
+<div class="endpoint" id="ep-products-6">
+  <div class="ep-head">
+    <span class="method m-post">POST</span>
+    <code class="path">/api/v1/admin/products/{id}/images</code>
+    <span class="auth auth-admin">Admin (Bearer)</span>
+  </div>
+  <p class="summary">Upload a product or variant image (multipart).</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>file</code></td><td>binary</td><td></td></tr><tr><td><code>variant_id</code></td><td>int|null</td><td>null = product-level image</td></tr><tr><td><code>sort_order</code></td><td>int?</td><td></td></tr><tr><td><code>is_primary</code></td><td>bool?</td><td></td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>ProductImageDTO</code></div></div>
+  </div>
+  
+</div>
+<div class="endpoint" id="ep-products-7">
+  <div class="ep-head">
+    <span class="method m-delete">DELETE</span>
+    <code class="path">/api/v1/admin/images/{id}</code>
+    <span class="auth auth-admin">Admin (Bearer)</span>
+  </div>
+  <p class="summary">Remove an image.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div><div class="none">— none (path/query params only) —</div></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>204 No Content</code></div></div>
+  </div>
+  
+</div></div><div class="group" id="grp-cart"><h2>Cart</h2>
+<div class="endpoint" id="ep-cart-0">
+  <div class="ep-head">
+    <span class="method m-get">GET</span>
+    <code class="path">/api/v1/cart</code>
+    <span class="auth auth-customer">Customer (Bearer)</span>
+  </div>
+  <p class="summary">Current user&#x27;s cart with live stock/price checks per line.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div><div class="none">— none (path/query params only) —</div></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>CartDTO</code></div></div>
+  </div>
+  <ul class="epnotes"><li>Each CartItemDTO carries a &#x27;stock_ok&#x27; flag computed at read time.</li></ul>
+</div>
+<div class="endpoint" id="ep-cart-1">
+  <div class="ep-head">
+    <span class="method m-post">POST</span>
+    <code class="path">/api/v1/cart/items</code>
+    <span class="auth auth-customer">Customer (Bearer)</span>
+  </div>
+  <p class="summary">Add a variant to the cart (or bump quantity if already present).</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>variant_id</code></td><td>int</td><td></td></tr><tr><td><code>quantity</code></td><td>int</td><td>default 1</td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>CartDTO</code></div></div>
+  </div>
+  <ul class="epnotes"><li>409 if requested quantity exceeds stock_qty.</li></ul>
+</div>
+<div class="endpoint" id="ep-cart-2">
+  <div class="ep-head">
+    <span class="method m-patch">PATCH</span>
+    <code class="path">/api/v1/cart/items/{id}</code>
+    <span class="auth auth-customer">Customer (Bearer)</span>
+  </div>
+  <p class="summary">Change line quantity.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>quantity</code></td><td>int</td><td></td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>CartDTO</code></div></div>
+  </div>
+  
+</div>
+<div class="endpoint" id="ep-cart-3">
+  <div class="ep-head">
+    <span class="method m-delete">DELETE</span>
+    <code class="path">/api/v1/cart/items/{id}</code>
+    <span class="auth auth-customer">Customer (Bearer)</span>
+  </div>
+  <p class="summary">Remove a line from the cart.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div><div class="none">— none (path/query params only) —</div></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>CartDTO</code></div></div>
+  </div>
+  
+</div></div><div class="group" id="grp-addresses"><h2>Addresses</h2>
+<div class="endpoint" id="ep-addresses-0">
+  <div class="ep-head">
+    <span class="method m-get">GET</span>
+    <code class="path">/api/v1/addresses</code>
+    <span class="auth auth-customer">Customer (Bearer)</span>
+  </div>
+  <p class="summary">List the user&#x27;s saved addresses.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div><div class="none">— none (path/query params only) —</div></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>AddressDTO[]</code></div></div>
+  </div>
+  
+</div>
+<div class="endpoint" id="ep-addresses-1">
+  <div class="ep-head">
+    <span class="method m-post">POST</span>
+    <code class="path">/api/v1/addresses</code>
+    <span class="auth auth-customer">Customer (Bearer)</span>
+  </div>
+  <p class="summary">Add an address.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>recipient_name</code></td><td>string</td><td></td></tr><tr><td><code>province</code></td><td>string</td><td></td></tr><tr><td><code>city</code></td><td>string</td><td></td></tr><tr><td><code>full_address</code></td><td>string</td><td></td></tr><tr><td><code>postal_code</code></td><td>string</td><td></td></tr><tr><td><code>is_default</code></td><td>bool?</td><td></td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>AddressDTO</code></div></div>
+  </div>
+  
+</div>
+<div class="endpoint" id="ep-addresses-2">
+  <div class="ep-head">
+    <span class="method m-patch">PATCH</span>
+    <code class="path">/api/v1/addresses/{id}</code>
+    <span class="auth auth-customer">Customer (Bearer)</span>
+  </div>
+  <p class="summary">Edit an address.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>...</code></td><td>any of the above fields</td><td>partial update</td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>AddressDTO</code></div></div>
+  </div>
+  
+</div>
+<div class="endpoint" id="ep-addresses-3">
+  <div class="ep-head">
+    <span class="method m-delete">DELETE</span>
+    <code class="path">/api/v1/addresses/{id}</code>
+    <span class="auth auth-customer">Customer (Bearer)</span>
+  </div>
+  <p class="summary">Delete an address.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div><div class="none">— none (path/query params only) —</div></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>204 No Content</code></div></div>
+  </div>
+  
+</div></div><div class="group" id="grp-orders"><h2>Orders &amp; Checkout</h2>
+<div class="endpoint" id="ep-orders-0">
+  <div class="ep-head">
+    <span class="method m-post">POST</span>
+    <code class="path">/api/v1/orders</code>
+    <span class="auth auth-customer">Customer (Bearer)</span>
+  </div>
+  <p class="summary">Checkout: converts the current cart into an Order.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>address_id</code></td><td>int</td><td></td></tr><tr><td><code>payment_method</code></td><td>string</td><td>&#x27;cod&#x27; | &#x27;zarinpal&#x27; | &#x27;idpay&#x27; | &#x27;nextpay&#x27;</td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>OrderDTO</code></div></div>
+  </div>
+  <ul class="epnotes"><li>Re-validates stock for every line; 409 lists which variant(s) failed.</li><li>Decrements Variant.stock_qty, clears the cart, writes OrderStatusHistory(status=&#x27;placed&#x27;).</li><li>If payment_method != &#x27;cod&#x27;, client must immediately call POST /orders/{id}/pay.</li></ul>
+</div>
+<div class="endpoint" id="ep-orders-1">
+  <div class="ep-head">
+    <span class="method m-get">GET</span>
+    <code class="path">/api/v1/orders</code>
+    <span class="auth auth-customer">Customer (Bearer)</span>
+  </div>
+  <p class="summary">Order history for the current user. Paginated.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>page</code></td><td>int?</td><td></td></tr><tr><td><code>page_size</code></td><td>int?</td><td></td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>Paginated&lt;OrderSummaryDTO&gt;</code></div></div>
+  </div>
+  
+</div>
+<div class="endpoint" id="ep-orders-2">
+  <div class="ep-head">
+    <span class="method m-get">GET</span>
+    <code class="path">/api/v1/orders/{id}</code>
+    <span class="auth auth-customer">Customer (Bearer)</span>
+  </div>
+  <p class="summary">Full order detail: items, status history, shipment, payment.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div><div class="none">— none (path/query params only) —</div></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>OrderDTO</code></div></div>
+  </div>
+  <ul class="epnotes"><li>403 if the order does not belong to the caller.</li></ul>
+</div>
+<div class="endpoint" id="ep-orders-3">
+  <div class="ep-head">
+    <span class="method m-post">POST</span>
+    <code class="path">/api/v1/orders/{id}/pay</code>
+    <span class="auth auth-customer">Customer (Bearer)</span>
+  </div>
+  <p class="summary">Start an online payment at the chosen gateway.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div><div class="none">— none (path/query params only) —</div></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>{ redirect_url: string }</code></div></div>
+  </div>
+  <ul class="epnotes"><li>No-op / 400 when payment_method=&#x27;cod&#x27;.</li></ul>
+</div>
+<div class="endpoint" id="ep-orders-4">
+  <div class="ep-head">
+    <span class="method m-post">POST</span>
+    <code class="path">/api/v1/payments/webhook/{gateway}</code>
+    <span class="auth auth-none">Public</span>
+  </div>
+  <p class="summary">Server-to-server callback from Zarinpal/IDPay/NextPay. Not called by frontend — listed for contract completeness.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>...</code></td><td>gateway-specific payload</td><td></td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>200 OK</code></div></div>
+  </div>
+  <ul class="epnotes"><li>Verifies signature, writes PaymentTransaction, updates Order.status, writes OrderStatusHistory.</li></ul>
+</div></div><div class="group" id="grp-returns"><h2>Returns &amp; Reviews</h2>
+<div class="endpoint" id="ep-returns-0">
+  <div class="ep-head">
+    <span class="method m-post">POST</span>
+    <code class="path">/api/v1/order-items/{order_item_id}/return-request</code>
+    <span class="auth auth-customer">Customer (Bearer)</span>
+  </div>
+  <p class="summary">Request a return or size exchange for a delivered item.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>reason</code></td><td>string</td><td></td></tr><tr><td><code>requested_exchange_variant_id</code></td><td>int|null</td><td>null = refund, not exchange</td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>ReturnRequestDTO</code></div></div>
+  </div>
+  <ul class="epnotes"><li>Only allowed when the parent Order.status = &#x27;delivered&#x27;.</li></ul>
+</div>
+<div class="endpoint" id="ep-returns-1">
+  <div class="ep-head">
+    <span class="method m-get">GET</span>
+    <code class="path">/api/v1/returns</code>
+    <span class="auth auth-customer">Customer (Bearer)</span>
+  </div>
+  <p class="summary">The current user&#x27;s return requests.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div><div class="none">— none (path/query params only) —</div></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>ReturnRequestDTO[]</code></div></div>
+  </div>
+  
+</div>
+<div class="endpoint" id="ep-returns-2">
+  <div class="ep-head">
+    <span class="method m-get">GET</span>
+    <code class="path">/api/v1/admin/returns</code>
+    <span class="auth auth-admin">Admin (Bearer)</span>
+  </div>
+  <p class="summary">All return requests, filterable by status.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>status</code></td><td>string?</td><td></td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>Paginated&lt;ReturnRequestDTO&gt;</code></div></div>
+  </div>
+  
+</div>
+<div class="endpoint" id="ep-returns-3">
+  <div class="ep-head">
+    <span class="method m-patch">PATCH</span>
+    <code class="path">/api/v1/admin/returns/{id}</code>
+    <span class="auth auth-admin">Admin (Bearer)</span>
+  </div>
+  <p class="summary">Approve or reject a return request.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>status</code></td><td>string</td><td>&#x27;approved&#x27; | &#x27;rejected&#x27;</td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>ReturnRequestDTO</code></div></div>
+  </div>
+  <ul class="epnotes"><li>Approved + has requested_exchange_variant_id -&gt; server creates the exchange order (flow TBD, flagged open question).</li></ul>
+</div>
+<div class="endpoint" id="ep-returns-4">
+  <div class="ep-head">
+    <span class="method m-get">GET</span>
+    <code class="path">/api/v1/products/{id}/comments</code>
+    <span class="auth auth-none">Public</span>
+  </div>
+  <p class="summary">Reviews/comments for a product.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div><div class="none">— none (path/query params only) —</div></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>CommentDTO[]</code></div></div>
+  </div>
+  
+</div>
+<div class="endpoint" id="ep-returns-5">
+  <div class="ep-head">
+    <span class="method m-post">POST</span>
+    <code class="path">/api/v1/products/{id}/comments</code>
+    <span class="auth auth-customer">Customer (Bearer)</span>
+  </div>
+  <p class="summary">Leave a fit-based review.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>order_id</code></td><td>int</td><td>must be a delivered order containing this product</td></tr><tr><td><code>rating</code></td><td>int</td><td>1-5</td></tr><tr><td><code>fit_feedback</code></td><td>string</td><td>&#x27;runs_small&#x27;|&#x27;true_to_size&#x27;|&#x27;runs_large&#x27;</td></tr><tr><td><code>body</code></td><td>string</td><td></td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>CommentDTO</code></div></div>
+  </div>
+  <ul class="epnotes"><li>409 if the user has no delivered order for this product.</li><li>OPEN QUESTION (carried from schema-v2 draft): Comment has no status/is_approved column yet, so there is nothing for the admin &#x27;moderate comment&#x27; flow to toggle — needs a schema change before this ships.</li></ul>
+</div>
+<div class="endpoint" id="ep-returns-6">
+  <div class="ep-head">
+    <span class="method m-delete">DELETE</span>
+    <code class="path">/api/v1/admin/comments/{id}</code>
+    <span class="auth auth-admin">Admin (Bearer)</span>
+  </div>
+  <p class="summary">Remove a comment (current stand-in for moderation until a status field exists).</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div><div class="none">— none (path/query params only) —</div></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>204 No Content</code></div></div>
+  </div>
+  
+</div></div><div class="group" id="grp-admin_orders"><h2>Admin — Orders &amp; Shipping</h2>
+<div class="endpoint" id="ep-admin_orders-0">
+  <div class="ep-head">
+    <span class="method m-get">GET</span>
+    <code class="path">/api/v1/admin/orders</code>
+    <span class="auth auth-admin">Admin (Bearer)</span>
+  </div>
+  <p class="summary">All orders, filterable by status. Paginated.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>status</code></td><td>string?</td><td></td></tr><tr><td><code>page</code></td><td>int?</td><td></td></tr><tr><td><code>page_size</code></td><td>int?</td><td></td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>Paginated&lt;OrderSummaryDTO&gt;</code></div></div>
+  </div>
+  
+</div>
+<div class="endpoint" id="ep-admin_orders-1">
+  <div class="ep-head">
+    <span class="method m-get">GET</span>
+    <code class="path">/api/v1/admin/orders/{id}</code>
+    <span class="auth auth-admin">Admin (Bearer)</span>
+  </div>
+  <p class="summary">Full order detail (same shape as customer view).</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div><div class="none">— none (path/query params only) —</div></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>OrderDTO</code></div></div>
+  </div>
+  
+</div>
+<div class="endpoint" id="ep-admin_orders-2">
+  <div class="ep-head">
+    <span class="method m-patch">PATCH</span>
+    <code class="path">/api/v1/admin/orders/{id}/status</code>
+    <span class="auth auth-admin">Admin (Bearer)</span>
+  </div>
+  <p class="summary">Advance order status (placed -&gt; paid -&gt; shipped -&gt; delivered, or -&gt; returned).</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>status</code></td><td>string</td><td></td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>OrderDTO</code></div></div>
+  </div>
+  <ul class="epnotes"><li>Writes OrderStatusHistory(changed_by=admin_user).</li><li>Setting status=&#x27;shipped&#x27; requires courier+tracking_code to also be set on Shipment (see next endpoint).</li></ul>
+</div>
+<div class="endpoint" id="ep-admin_orders-3">
+  <div class="ep-head">
+    <span class="method m-post">POST</span>
+    <code class="path">/api/v1/admin/orders/{id}/shipment</code>
+    <span class="auth auth-admin">Admin (Bearer)</span>
+  </div>
+  <p class="summary">Create/update the shipment record for an order.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>courier</code></td><td>string</td><td>&#x27;post&#x27;|&#x27;tipax&#x27;|&#x27;snapp_box&#x27;|&#x27;alopeyk&#x27;</td></tr><tr><td><code>tracking_code</code></td><td>string</td><td></td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>ShipmentDTO</code></div></div>
+  </div>
+  
+</div></div><div class="group" id="grp-admin_misc"><h2>Admin — Dashboard &amp; Logs</h2>
+<div class="endpoint" id="ep-admin_misc-0">
+  <div class="ep-head">
+    <span class="method m-get">GET</span>
+    <code class="path">/api/v1/admin/dashboard/summary</code>
+    <span class="auth auth-admin">Admin (Bearer)</span>
+  </div>
+  <p class="summary">Basic counters for the admin landing page.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div><div class="none">— none (path/query params only) —</div></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>{ orders_today: int, revenue_today: int, pending_returns: int, low_stock_variants: int }</code></div></div>
+  </div>
+  
+</div>
+<div class="endpoint" id="ep-admin_misc-1">
+  <div class="ep-head">
+    <span class="method m-get">GET</span>
+    <code class="path">/api/v1/admin/logs</code>
+    <span class="auth auth-admin">Admin (Bearer)</span>
+  </div>
+  <p class="summary">Admin action audit trail. Paginated.</p>
+  <div class="reqresp-grid">
+    <div class="reqresp"><div class="rr-label">Request body</div>
+<table class="mini"><tr><th>field</th><th>type</th><th>notes</th></tr><tr><td><code>page</code></td><td>int?</td><td></td></tr><tr><td><code>page_size</code></td><td>int?</td><td></td></tr></table></div>
+    <div class="reqresp"><div class="rr-label">Response</div><div class="resp"><code>Paginated&lt;AdminActionLogDTO&gt;</code></div></div>
+  </div>
+  
+</div></div>
+  </div>
+</div>
+</div>
+<div id="t2" class="tabpanel">
+<div class="content" style="padding:18px 28px 60px;max-width:1100px;">
+  <p class="intro">These are the JSON shapes returned/accepted by the API above — the actual contract Emma's
+  frontend code should be written against, not the raw DB tables (see <code>schema-v2-draft.html</code> for those).
+  Field names are camelCase on neither side intentionally — <strong>open question</strong>: confirm snake_case vs
+  camelCase in JSON before Emma starts, this draft uses snake_case throughout to match the DB.</p>
+  
+<div class="tablecard" id="dto-CategoryDTO">
+  <h3>CategoryDTO <span class="rowcount">Category</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>id</code></td><td>int</td><td>—</td><td><code>Category.id</code></td><td></td></tr><tr><td><code>name</code></td><td>string</td><td>—</td><td><code>Category.name</code></td><td></td></tr><tr><td><code>slug</code></td><td>string</td><td>—</td><td><code>Category.slug</code></td><td></td></tr><tr><td><code>parent_id</code></td><td>int</td><td><span class="null">nullable</span></td><td><code>Category.parent_id</code></td><td></td></tr><tr><td><code>children</code></td><td>CategoryDTO[]</td><td>—</td><td><code>(computed)</code></td><td>tree children, [] if leaf — only on GET /categories</td></tr></table>
+  </div>
+</div>
+<div class="tablecard" id="dto-ProductListItemDTO">
+  <h3>ProductListItemDTO <span class="rowcount">Product (list view)</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>id</code></td><td>int</td><td>—</td><td><code>Product.id</code></td><td></td></tr><tr><td><code>product_code</code></td><td>string</td><td>—</td><td><code>Product.product_code</code></td><td></td></tr><tr><td><code>name</code></td><td>string</td><td>—</td><td><code>Product.name</code></td><td></td></tr><tr><td><code>base_price</code></td><td>int</td><td>—</td><td><code>Product.base_price</code></td><td>Rial, no decimals</td></tr><tr><td><code>primary_image_url</code></td><td>string</td><td><span class="null">nullable</span></td><td><code>ProductImage.url</code></td><td>where is_primary=true</td></tr><tr><td><code>category</code></td><td>CategoryDTO</td><td>—</td><td><code>Category</code></td><td>id+name+slug only, not full tree</td></tr><tr><td><code>rating_avg</code></td><td>float</td><td><span class="null">nullable</span></td><td><code>(computed from Comment)</code></td><td>null if no reviews yet</td></tr></table>
+  </div>
+</div>
+<div class="tablecard" id="dto-ProductDetailDTO">
+  <h3>ProductDetailDTO <span class="rowcount">Product (detail view)</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>id</code></td><td>int</td><td>—</td><td><code>Product.id</code></td><td></td></tr><tr><td><code>product_code</code></td><td>string</td><td>—</td><td><code>Product.product_code</code></td><td></td></tr><tr><td><code>name</code></td><td>string</td><td>—</td><td><code>Product.name</code></td><td></td></tr><tr><td><code>base_price</code></td><td>int</td><td>—</td><td><code>Product.base_price</code></td><td></td></tr><tr><td><code>is_active</code></td><td>bool</td><td>—</td><td><code>Product.is_active</code></td><td></td></tr><tr><td><code>category</code></td><td>CategoryDTO</td><td>—</td><td><code>Category</code></td><td></td></tr><tr><td><code>spec</code></td><td>object</td><td><span class="null">nullable</span></td><td><code>ProductSpec</code></td><td>{fabric, care_instructions, origin_country}</td></tr><tr><td><code>variants</code></td><td>VariantDTO[]</td><td>—</td><td><code>Variant</code></td><td></td></tr><tr><td><code>images</code></td><td>ProductImageDTO[]</td><td>—</td><td><code>ProductImage</code></td><td>product-level + all variant-level images</td></tr><tr><td><code>rating_avg</code></td><td>float</td><td><span class="null">nullable</span></td><td><code>(computed)</code></td><td></td></tr><tr><td><code>rating_count</code></td><td>int</td><td>—</td><td><code>(computed)</code></td><td></td></tr></table>
+  </div>
+</div>
+<div class="tablecard" id="dto-VariantDTO">
+  <h3>VariantDTO <span class="rowcount">Variant</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>id</code></td><td>int</td><td>—</td><td><code>Variant.id</code></td><td></td></tr><tr><td><code>sku</code></td><td>string</td><td>—</td><td><code>Variant.sku</code></td><td></td></tr><tr><td><code>band</code></td><td>int</td><td><span class="null">nullable</span></td><td><code>Variant.band</code></td><td>null for size_label variants</td></tr><tr><td><code>cup</code></td><td>string</td><td><span class="null">nullable</span></td><td><code>Variant.cup</code></td><td>null for size_label variants</td></tr><tr><td><code>size_label</code></td><td>string</td><td><span class="null">nullable</span></td><td><code>Variant.size_label</code></td><td>null for band+cup variants</td></tr><tr><td><code>color</code></td><td>string</td><td>—</td><td><code>Variant.color</code></td><td></td></tr><tr><td><code>price</code></td><td>int</td><td>—</td><td><code>(computed)</code></td><td>price_override if set, else Product.base_price</td></tr><tr><td><code>stock_qty</code></td><td>int</td><td>—</td><td><code>Variant.stock_qty</code></td><td></td></tr><tr><td><code>in_stock</code></td><td>bool</td><td>—</td><td><code>(computed)</code></td><td>stock_qty &gt; 0</td></tr></table>
+  </div>
+</div>
+<div class="tablecard" id="dto-ProductImageDTO">
+  <h3>ProductImageDTO <span class="rowcount">ProductImage</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>id</code></td><td>int</td><td>—</td><td><code>ProductImage.id</code></td><td></td></tr><tr><td><code>variant_id</code></td><td>int</td><td><span class="null">nullable</span></td><td><code>ProductImage.variant_id</code></td><td>null = product-level</td></tr><tr><td><code>url</code></td><td>string</td><td>—</td><td><code>ProductImage.url</code></td><td></td></tr><tr><td><code>sort_order</code></td><td>int</td><td>—</td><td><code>ProductImage.sort_order</code></td><td></td></tr><tr><td><code>is_primary</code></td><td>bool</td><td>—</td><td><code>ProductImage.is_primary</code></td><td></td></tr></table>
+  </div>
+</div>
+<div class="tablecard" id="dto-UserDTO">
+  <h3>UserDTO <span class="rowcount">User</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>id</code></td><td>int</td><td>—</td><td><code>User.id</code></td><td></td></tr><tr><td><code>mobile_number</code></td><td>string</td><td>—</td><td><code>User.mobile_number</code></td><td></td></tr><tr><td><code>full_name</code></td><td>string</td><td><span class="null">nullable</span></td><td><code>User.full_name</code></td><td></td></tr><tr><td><code>is_verified</code></td><td>bool</td><td>—</td><td><code>User.is_verified</code></td><td></td></tr></table>
+  </div>
+</div>
+<div class="tablecard" id="dto-AddressDTO">
+  <h3>AddressDTO <span class="rowcount">Address</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>id</code></td><td>int</td><td>—</td><td><code>Address.id</code></td><td></td></tr><tr><td><code>recipient_name</code></td><td>string</td><td>—</td><td><code>Address.recipient_name</code></td><td></td></tr><tr><td><code>province</code></td><td>string</td><td>—</td><td><code>Address.province</code></td><td></td></tr><tr><td><code>city</code></td><td>string</td><td>—</td><td><code>Address.city</code></td><td></td></tr><tr><td><code>full_address</code></td><td>string</td><td>—</td><td><code>Address.full_address</code></td><td></td></tr><tr><td><code>postal_code</code></td><td>string</td><td>—</td><td><code>Address.postal_code</code></td><td></td></tr><tr><td><code>is_default</code></td><td>bool</td><td>—</td><td><code>Address.is_default</code></td><td></td></tr></table>
+  </div>
+</div>
+<div class="tablecard" id="dto-CartItemDTO">
+  <h3>CartItemDTO <span class="rowcount">CartItem</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>id</code></td><td>int</td><td>—</td><td><code>CartItem.id</code></td><td></td></tr><tr><td><code>variant</code></td><td>VariantDTO</td><td>—</td><td><code>Variant</code></td><td></td></tr><tr><td><code>quantity</code></td><td>int</td><td>—</td><td><code>CartItem.quantity</code></td><td></td></tr><tr><td><code>line_total</code></td><td>int</td><td>—</td><td><code>(computed)</code></td><td>variant.price * quantity</td></tr><tr><td><code>stock_ok</code></td><td>bool</td><td>—</td><td><code>(computed)</code></td><td>quantity &lt;= variant.stock_qty, checked at read time</td></tr></table>
+  </div>
+</div>
+<div class="tablecard" id="dto-CartDTO">
+  <h3>CartDTO <span class="rowcount">Cart (virtual — no own table)</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>items</code></td><td>CartItemDTO[]</td><td>—</td><td><code>CartItem</code></td><td></td></tr><tr><td><code>total</code></td><td>int</td><td>—</td><td><code>(computed)</code></td><td>sum of line_total</td></tr></table>
+  </div>
+</div>
+<div class="tablecard" id="dto-OrderItemDTO">
+  <h3>OrderItemDTO <span class="rowcount">OrderItem</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>id</code></td><td>int</td><td>—</td><td><code>OrderItem.id</code></td><td></td></tr><tr><td><code>variant</code></td><td>VariantDTO</td><td>—</td><td><code>Variant</code></td><td>snapshot shape, but reads live variant/product</td></tr><tr><td><code>quantity</code></td><td>int</td><td>—</td><td><code>OrderItem.quantity</code></td><td></td></tr><tr><td><code>unit_price</code></td><td>int</td><td>—</td><td><code>OrderItem.unit_price</code></td><td>price AT TIME of order, not live price</td></tr></table>
+  </div>
+</div>
+<div class="tablecard" id="dto-OrderSummaryDTO">
+  <h3>OrderSummaryDTO <span class="rowcount">Order (list view)</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>id</code></td><td>int</td><td>—</td><td><code>Order.id</code></td><td></td></tr><tr><td><code>status</code></td><td>string</td><td>—</td><td><code>Order.status</code></td><td>see Order status enum</td></tr><tr><td><code>total_amount</code></td><td>int</td><td>—</td><td><code>Order.total_amount</code></td><td></td></tr><tr><td><code>created_at</code></td><td>string</td><td>—</td><td><code>Order.created_at</code></td><td>ISO 8601 UTC</td></tr><tr><td><code>item_count</code></td><td>int</td><td>—</td><td><code>(computed)</code></td><td>count of OrderItem rows</td></tr></table>
+  </div>
+</div>
+<div class="tablecard" id="dto-OrderDTO">
+  <h3>OrderDTO <span class="rowcount">Order (detail view)</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>id</code></td><td>int</td><td>—</td><td><code>Order.id</code></td><td></td></tr><tr><td><code>status</code></td><td>string</td><td>—</td><td><code>Order.status</code></td><td></td></tr><tr><td><code>total_amount</code></td><td>int</td><td>—</td><td><code>Order.total_amount</code></td><td></td></tr><tr><td><code>payment_method</code></td><td>string</td><td>—</td><td><code>Order.payment_method</code></td><td></td></tr><tr><td><code>address</code></td><td>AddressDTO</td><td>—</td><td><code>Address</code></td><td>snapshot at order time (address may be edited/deleted later)</td></tr><tr><td><code>items</code></td><td>OrderItemDTO[]</td><td>—</td><td><code>OrderItem</code></td><td></td></tr><tr><td><code>status_history</code></td><td>OrderStatusHistoryDTO[]</td><td>—</td><td><code>OrderStatusHistory</code></td><td>oldest first</td></tr><tr><td><code>payment</code></td><td>PaymentTransactionDTO</td><td><span class="null">nullable</span></td><td><code>PaymentTransaction</code></td><td>null until a payment attempt exists</td></tr><tr><td><code>shipment</code></td><td>ShipmentDTO</td><td><span class="null">nullable</span></td><td><code>Shipment</code></td><td>null until shipped</td></tr><tr><td><code>created_at</code></td><td>string</td><td>—</td><td><code>Order.created_at</code></td><td></td></tr></table>
+  </div>
+</div>
+<div class="tablecard" id="dto-OrderStatusHistoryDTO">
+  <h3>OrderStatusHistoryDTO <span class="rowcount">OrderStatusHistory</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>status</code></td><td>string</td><td>—</td><td><code>OrderStatusHistory.status</code></td><td></td></tr><tr><td><code>changed_at</code></td><td>string</td><td>—</td><td><code>OrderStatusHistory.changed_at</code></td><td></td></tr><tr><td><code>changed_by</code></td><td>string</td><td>—</td><td><code>OrderStatusHistory.changed_by</code></td><td>&#x27;system&#x27; | &#x27;customer&#x27; | admin username</td></tr></table>
+  </div>
+</div>
+<div class="tablecard" id="dto-PaymentTransactionDTO">
+  <h3>PaymentTransactionDTO <span class="rowcount">PaymentTransaction</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>gateway</code></td><td>string</td><td>—</td><td><code>PaymentTransaction.gateway</code></td><td>&#x27;zarinpal&#x27;|&#x27;idpay&#x27;|&#x27;nextpay&#x27;</td></tr><tr><td><code>amount</code></td><td>int</td><td>—</td><td><code>PaymentTransaction.amount</code></td><td></td></tr><tr><td><code>status</code></td><td>string</td><td>—</td><td><code>PaymentTransaction.status</code></td><td>&#x27;pending&#x27;|&#x27;success&#x27;|&#x27;failed&#x27;</td></tr><tr><td><code>ref_code</code></td><td>string</td><td><span class="null">nullable</span></td><td><code>PaymentTransaction.ref_code</code></td><td></td></tr><tr><td><code>paid_at</code></td><td>string</td><td><span class="null">nullable</span></td><td><code>PaymentTransaction.paid_at</code></td><td></td></tr></table>
+  </div>
+</div>
+<div class="tablecard" id="dto-ShipmentDTO">
+  <h3>ShipmentDTO <span class="rowcount">Shipment</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>courier</code></td><td>string</td><td>—</td><td><code>Shipment.courier</code></td><td></td></tr><tr><td><code>tracking_code</code></td><td>string</td><td>—</td><td><code>Shipment.tracking_code</code></td><td></td></tr><tr><td><code>status</code></td><td>string</td><td>—</td><td><code>Shipment.status</code></td><td></td></tr><tr><td><code>shipped_at</code></td><td>string</td><td><span class="null">nullable</span></td><td><code>Shipment.shipped_at</code></td><td></td></tr><tr><td><code>delivered_at</code></td><td>string</td><td><span class="null">nullable</span></td><td><code>Shipment.delivered_at</code></td><td></td></tr></table>
+  </div>
+</div>
+<div class="tablecard" id="dto-ReturnRequestDTO">
+  <h3>ReturnRequestDTO <span class="rowcount">ReturnRequest</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>id</code></td><td>int</td><td>—</td><td><code>ReturnRequest.id</code></td><td></td></tr><tr><td><code>order_item_id</code></td><td>int</td><td>—</td><td><code>ReturnRequest.order_item_id</code></td><td></td></tr><tr><td><code>reason</code></td><td>string</td><td>—</td><td><code>ReturnRequest.reason</code></td><td></td></tr><tr><td><code>requested_exchange_variant_id</code></td><td>int</td><td><span class="null">nullable</span></td><td><code>ReturnRequest.requested_exchange_variant_id</code></td><td>null = plain refund</td></tr><tr><td><code>status</code></td><td>string</td><td>—</td><td><code>ReturnRequest.status</code></td><td>&#x27;pending&#x27;|&#x27;approved&#x27;|&#x27;rejected&#x27;</td></tr><tr><td><code>created_at</code></td><td>string</td><td>—</td><td><code>ReturnRequest.created_at</code></td><td></td></tr></table>
+  </div>
+</div>
+<div class="tablecard" id="dto-CommentDTO">
+  <h3>CommentDTO <span class="rowcount">Comment</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>id</code></td><td>int</td><td>—</td><td><code>Comment.id</code></td><td></td></tr><tr><td><code>user_full_name</code></td><td>string</td><td><span class="null">nullable</span></td><td><code>User.full_name</code></td><td>display name, not full UserDTO</td></tr><tr><td><code>rating</code></td><td>int</td><td>—</td><td><code>Comment.rating</code></td><td>1-5</td></tr><tr><td><code>fit_feedback</code></td><td>string</td><td>—</td><td><code>Comment.fit_feedback</code></td><td>&#x27;runs_small&#x27;|&#x27;true_to_size&#x27;|&#x27;runs_large&#x27;</td></tr><tr><td><code>body</code></td><td>string</td><td>—</td><td><code>Comment.body</code></td><td></td></tr><tr><td><code>created_at</code></td><td>string</td><td>—</td><td><code>Comment.created_at</code></td><td></td></tr></table>
+  </div>
+</div>
+<div class="tablecard" id="dto-AdminActionLogDTO">
+  <h3>AdminActionLogDTO <span class="rowcount">AdminActionLog</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>id</code></td><td>int</td><td>—</td><td><code>AdminActionLog.id</code></td><td></td></tr><tr><td><code>admin_user</code></td><td>string</td><td>—</td><td><code>AdminActionLog.admin_user</code></td><td></td></tr><tr><td><code>action</code></td><td>string</td><td>—</td><td><code>AdminActionLog.action</code></td><td></td></tr><tr><td><code>entity_type</code></td><td>string</td><td>—</td><td><code>AdminActionLog.entity_type</code></td><td></td></tr><tr><td><code>entity_id</code></td><td>int</td><td>—</td><td><code>AdminActionLog.entity_id</code></td><td></td></tr><tr><td><code>detail</code></td><td>string</td><td><span class="null">nullable</span></td><td><code>AdminActionLog.detail</code></td><td></td></tr><tr><td><code>created_at</code></td><td>string</td><td>—</td><td><code>AdminActionLog.created_at</code></td><td></td></tr></table>
+  </div>
+</div>
+<div class="tablecard" id="dto-Paginated&lt;T&gt;">
+  <h3>Paginated&lt;T&gt; <span class="rowcount">generic envelope — not a table</span></h3>
+  <div class="tablewrap">
+    <table><tr><th>field</th><th>type</th><th>nullable</th><th>maps to</th><th>notes</th></tr><tr><td><code>items</code></td><td>T[]</td><td>—</td><td><code>-</code></td><td></td></tr><tr><td><code>page</code></td><td>int</td><td>—</td><td><code>-</code></td><td></td></tr><tr><td><code>page_size</code></td><td>int</td><td>—</td><td><code>-</code></td><td></td></tr><tr><td><code>total</code></td><td>int</td><td>—</td><td><code>-</code></td><td>total matching rows across all pages</td></tr></table>
+  </div>
+</div>
+</div>
+</div>
+<div id="t3" class="tabpanel">
+<div class="content" style="padding:18px 28px 60px;max-width:900px;">
+  <h2>Auth</h2>
+  <p>OTP-based login only (no password). Successful verify returns a JWT in <code>access_token</code>.
+  Send it on every authenticated call as <code>Authorization: Bearer &lt;token&gt;</code>.
+  No refresh-token flow in Phase 1 — token lifetime and re-login-on-expiry behavior is an
+  <strong>open question</strong> to settle before Emma builds the auth screens.</p>
+
+  <h2>Pagination</h2>
+  <p>List endpoints that can grow unbounded (products, orders, logs, returns) accept
+  <code>page</code> (1-based) and <code>page_size</code> (default 20, max 100) and return the
+  <code>Paginated&lt;T&gt;</code> envelope documented in the Data Contracts tab. Small, bounded lists
+  (categories, a cart, a product's variants/images) return a plain array.</p>
+
+  <h2>Error format</h2>
+  <p>Every non-2xx response body:</p>
+  <pre class="codeblock">{
+  "error": {
+    "code": "OUT_OF_STOCK",
+    "message": "Human-readable message, Persian in production.",
+    "fields": { "variant_id": "only present for field-level validation errors" }
+  }
+}</pre>
+  <p>HTTP status still carries the category: 400 validation, 401 missing/invalid token, 403 wrong role or
+  not-your-resource, 404 not found, 409 conflict (stock, duplicate, invalid state transition), 500 server error.</p>
+
+  <h2>Money &amp; dates</h2>
+  <ul class="epnotes">
+    <li>All amounts are integers in Rial — no decimals, no minor-unit conversion.</li>
+    <li>All timestamps are ISO 8601 in UTC (e.g. <code>2026-10-24T14:05:00Z</code>); the frontend converts to
+    Persian calendar / local display.</li>
+  </ul>
+
+  <h2>Enums</h2>
+  <table class="mini wide"><tr><th>field</th><th>allowed values (lifecycle order where applicable)</th></tr><tr><td><code>Order.status</code></td><td>placed → paid → shipped → delivered → returned → cancelled</td></tr><tr><td><code>PaymentTransaction.status</code></td><td>pending → success → failed</td></tr><tr><td><code>Shipment.status</code></td><td>pending → in_transit → delivered → failed</td></tr><tr><td><code>ReturnRequest.status</code></td><td>pending → approved → rejected</td></tr><tr><td><code>Variant courier (Shipment.courier)</code></td><td>post → tipax → snapp_box → alopeyk</td></tr><tr><td><code>Order.payment_method</code></td><td>cod → zarinpal → idpay → nextpay</td></tr><tr><td><code>Comment.fit_feedback</code></td><td>runs_small → true_to_size → runs_large</td></tr></table>
+
+  <h2>RTL / i18n</h2>
+  <p>API does not localize strings — all user-facing copy (status labels, error messages) is translated and
+  laid out RTL on the frontend side. The API returns raw enum values and raw numbers only.</p>
+
+  <h2>Open questions before Emma starts (carried over from this brainstorm)</h2>
+  <ul class="epnotes">
+    <li>JSON field casing: snake_case (as drafted) vs camelCase.</li>
+    <li>Comment moderation: no status/is_approved column exists yet on Comment — needs a schema decision.</li>
+    <li>JWT lifetime + refresh strategy.</li>
+    <li>Exchange-order creation on an approved return-with-exchange: automatic vs admin-triggered.</li>
+  </ul>
+</div>
+</div>
+
+<footer>
+  Generated draft for the ShoppingStore backend learning project (FastAPI, step 17 brainstorm follow-up).
+  Source of table/field names: schema-v2-draft.html. Not yet implemented in code.
+</footer>
+
+<script>
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tabpanel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>

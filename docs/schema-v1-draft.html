@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ShoppingStore — Schema Draft v1 (Products / Categories / Variants)</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Arial, sans-serif; margin: 40px auto; max-width: 1100px; color: #1a1a1a; line-height: 1.5; }
+  h1 { font-size: 1.6em; border-bottom: 3px solid #333; padding-bottom: 8px; }
+  h2 { font-size: 1.25em; margin-top: 2.5em; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+  .note { background: #fff8e1; border-left: 4px solid #f0ad4e; padding: 10px 16px; margin: 14px 0; font-size: 0.95em; }
+  .open { background: #e8f0fe; border-left: 4px solid #4285f4; padding: 10px 16px; margin: 14px 0; font-size: 0.95em; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0 28px; font-size: 0.88em; }
+  th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; }
+  th { background: #333; color: #fff; position: sticky; top: 0; }
+  tr:nth-child(even) { background: #f7f7f7; }
+  code { background: #eee; padding: 1px 5px; border-radius: 3px; font-size: 0.92em; }
+  .pk { color: #0b6e4f; font-weight: 600; }
+  .fk { color: #a94442; font-weight: 600; }
+  .status { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.8em; font-weight: 600; }
+  .draft { background: #fde9e9; color: #a94442; }
+  footer { margin-top: 3em; font-size: 0.85em; color: #777; }
+</style>
+</head>
+<body>
+
+<h1>ShoppingStore Backend — Table Design Draft v1 <span class="status draft">BRAINSTORM — NOT FINAL</span></h1>
+<p>Step 17 scope: move <code>Product</code> off the flat SQLite table into a real Postgres schema with <strong>Categories</strong>, <strong>Products</strong>, and <strong>Variants</strong> (band + cup + color, per the confirmed sizing decision). This is a first pass to react to, not the final design.</p>
+
+<div class="note">
+<strong>Design calls made for this draft (flag anything you'd flip):</strong>
+<ul>
+<li><strong>Product vs Variant split</strong> — <code>Product</code> holds shared, non-sellable info (name, description, category, base/list price shown on catalog cards). <code>Variant</code> holds the sellable unit: band + cup + color + its own SKU, stock, and an optional <code>price_override</code> (defaults to the product's price; only set when a specific size/color costs more — e.g. plus-size bands).</li>
+<li><strong>Categories</strong> — one flat-ish table but with a self-referencing <code>parent_id</code> so it can go 2 levels deep (e.g. "Bras" → "Push-up Bras") without a separate tree table.</li>
+<li><strong>Stock</strong> — lives on <code>Variant</code>, since band+cup+color is the actual sellable/stockable unit. Building it now (not deferring to step 18/22) since the column needs to exist before concurrency logic can touch it.</li>
+<li><strong>Product ↔ Category</strong> — one category per product for v1 (simple FK on <code>Product</code>). Noted as an open question below.</li>
+</ul>
+</div>
+
+<div class="open">
+<strong>Open questions for the brainstorm:</strong>
+<ol>
+<li>Is base price on <code>Product</code> with a per-variant override the right call, or should <em>all</em> pricing live on <code>Variant</code> only (simpler, but duplicates price across every size/color of the same product)?</li>
+<li>Is one category per product enough, or do we need product↔category many-to-many (e.g. a bralette listed under both "Bras" and "New Arrivals")?</li>
+<li>Does <code>Category.parent_id</code> actually get used in v1, or is flat fine until we have more inventory?</li>
+<li>Variant SKU format — is <code>{product-code}-{band}{cup}-{color}</code> (e.g. <code>BRA001-34B-BLK</code>) good enough, or do we want a separate barcode/EAN field for POS/label printing later?</li>
+</ol>
+</div>
+
+<h2>1. Category</h2>
+<table>
+<tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+<tr><td class="pk">id</td><td>INTEGER PK</td><td></td></tr>
+<tr><td>name</td><td>VARCHAR</td><td></td></tr>
+<tr><td>slug</td><td>VARCHAR UNIQUE</td><td>URL-friendly, e.g. <code>push-up-bras</code></td></tr>
+<tr><td class="fk">parent_id</td><td>INTEGER NULL, FK → category.id</td><td>NULL = top-level category</td></tr>
+</table>
+
+<table>
+<tr><th>id</th><th>name</th><th>slug</th><th>parent_id</th></tr>
+<tr><td>1</td><td>Bras</td><td>bras</td><td>NULL</td></tr>
+<tr><td>2</td><td>Push-up Bras</td><td>push-up-bras</td><td>1</td></tr>
+<tr><td>3</td><td>Sports Bras</td><td>sports-bras</td><td>1</td></tr>
+<tr><td>4</td><td>Wireless Bras</td><td>wireless-bras</td><td>1</td></tr>
+<tr><td>5</td><td>Panties</td><td>panties</td><td>NULL</td></tr>
+<tr><td>6</td><td>Briefs</td><td>briefs</td><td>5</td></tr>
+<tr><td>7</td><td>Thongs</td><td>thongs</td><td>5</td></tr>
+<tr><td>8</td><td>Sets</td><td>sets</td><td>NULL</td></tr>
+<tr><td>9</td><td>Sleepwear</td><td>sleepwear</td><td>NULL</td></tr>
+<tr><td>10</td><td>Shapewear</td><td>shapewear</td><td>NULL</td></tr>
+</table>
+
+<h2>2. Product</h2>
+<table>
+<tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+<tr><td class="pk">id</td><td>INTEGER PK</td><td></td></tr>
+<tr><td>product_code</td><td>VARCHAR UNIQUE</td><td>human-readable base code, e.g. <code>BRA001</code>; used to build variant SKUs</td></tr>
+<tr><td>name</td><td>VARCHAR</td><td></td></tr>
+<tr><td>description</td><td>TEXT</td><td></td></tr>
+<tr><td class="fk">category_id</td><td>INTEGER, FK → category.id</td><td>one category per product (v1)</td></tr>
+<tr><td>base_price</td><td>DECIMAL(10,2)</td><td>Toman; shown on catalog card, default for variants</td></tr>
+<tr><td>is_active</td><td>BOOLEAN</td><td>soft hide instead of delete</td></tr>
+<tr><td>created_at</td><td>TIMESTAMP</td><td></td></tr>
+</table>
+
+<table>
+<tr><th>id</th><th>product_code</th><th>name</th><th>category_id</th><th>base_price</th><th>is_active</th></tr>
+<tr><td>1</td><td>BRA001</td><td>Classic Push-up Bra</td><td>2</td><td>890000</td><td>true</td></tr>
+<tr><td>2</td><td>BRA002</td><td>Everyday Wireless Bra</td><td>4</td><td>750000</td><td>true</td></tr>
+<tr><td>3</td><td>BRA003</td><td>Active Sports Bra</td><td>3</td><td>680000</td><td>true</td></tr>
+<tr><td>4</td><td>BRA004</td><td>Lace Push-up Bra</td><td>2</td><td>950000</td><td>true</td></tr>
+<tr><td>5</td><td>PAN001</td><td>Cotton Brief</td><td>6</td><td>290000</td><td>true</td></tr>
+<tr><td>6</td><td>PAN002</td><td>Lace Thong</td><td>7</td><td>250000</td><td>true</td></tr>
+<tr><td>7</td><td>SET001</td><td>Satin Bra &amp; Brief Set</td><td>8</td><td>1200000</td><td>true</td></tr>
+<tr><td>8</td><td>SLP001</td><td>Silk Sleep Slip</td><td>9</td><td>980000</td><td>true</td></tr>
+<tr><td>9</td><td>SHP001</td><td>Waist Shaper</td><td>10</td><td>1100000</td><td>true</td></tr>
+<tr><td>10</td><td>BRA005</td><td>Minimizer Bra</td><td>1</td><td>820000</td><td>false</td></tr>
+</table>
+
+<h2>3. Variant</h2>
+<table>
+<tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+<tr><td class="pk">id</td><td>INTEGER PK</td><td></td></tr>
+<tr><td class="fk">product_id</td><td>INTEGER, FK → product.id</td><td></td></tr>
+<tr><td>sku</td><td>VARCHAR UNIQUE</td><td><code>{product_code}-{band}{cup}-{color}</code></td></tr>
+<tr><td>band</td><td>INTEGER NULL</td><td>e.g. 34; NULL for non-bra products (panties use a letter size instead — see open question)</td></tr>
+<tr><td>cup</td><td>VARCHAR NULL</td><td>e.g. B; NULL for non-bra products</td></tr>
+<tr><td>size_label</td><td>VARCHAR NULL</td><td>for non-band/cup items, e.g. panties/shapewear: S/M/L; mutually exclusive with band+cup in practice</td></tr>
+<tr><td>color</td><td>VARCHAR</td><td>e.g. Black, Nude, Red</td></tr>
+<tr><td>price_override</td><td>DECIMAL(10,2) NULL</td><td>NULL = use product.base_price</td></tr>
+<tr><td>stock_qty</td><td>INTEGER</td><td></td></tr>
+</table>
+
+<table>
+<tr><th>id</th><th>product_id</th><th>sku</th><th>band</th><th>cup</th><th>size_label</th><th>color</th><th>price_override</th><th>stock_qty</th></tr>
+<tr><td>1</td><td>1</td><td>BRA001-34B-BLK</td><td>34</td><td>B</td><td>NULL</td><td>Black</td><td>NULL</td><td>18</td></tr>
+<tr><td>2</td><td>1</td><td>BRA001-34B-NUD</td><td>34</td><td>B</td><td>NULL</td><td>Nude</td><td>NULL</td><td>12</td></tr>
+<tr><td>3</td><td>1</td><td>BRA001-36C-BLK</td><td>36</td><td>C</td><td>NULL</td><td>Black</td><td>NULL</td><td>0</td></tr>
+<tr><td>4</td><td>1</td><td>BRA001-38D-BLK</td><td>38</td><td>D</td><td>NULL</td><td>Black</td><td>50000</td><td>7</td></tr>
+<tr><td>5</td><td>2</td><td>BRA002-32A-NUD</td><td>32</td><td>A</td><td>NULL</td><td>Nude</td><td>NULL</td><td>20</td></tr>
+<tr><td>6</td><td>2</td><td>BRA002-34B-BLK</td><td>34</td><td>B</td><td>NULL</td><td>Black</td><td>NULL</td><td>15</td></tr>
+<tr><td>7</td><td>3</td><td>BRA003-34B-GRY</td><td>34</td><td>B</td><td>NULL</td><td>Grey</td><td>NULL</td><td>25</td></tr>
+<tr><td>8</td><td>3</td><td>BRA003-36C-GRY</td><td>36</td><td>C</td><td>NULL</td><td>Grey</td><td>NULL</td><td>9</td></tr>
+<tr><td>9</td><td>4</td><td>BRA004-34B-RED</td><td>34</td><td>B</td><td>NULL</td><td>Red</td><td>NULL</td><td>6</td></tr>
+<tr><td>10</td><td>5</td><td>PAN001-M-WHT</td><td>NULL</td><td>NULL</td><td>M</td><td>White</td><td>NULL</td><td>40</td></tr>
+<tr><td>11</td><td>5</td><td>PAN001-L-WHT</td><td>NULL</td><td>NULL</td><td>L</td><td>White</td><td>NULL</td><td>30</td></tr>
+<tr><td>12</td><td>6</td><td>PAN002-S-BLK</td><td>NULL</td><td>NULL</td><td>S</td><td>Black</td><td>NULL</td><td>22</td></tr>
+<tr><td>13</td><td>7</td><td>SET001-34B-IVR</td><td>34</td><td>B</td><td>NULL</td><td>Ivory</td><td>NULL</td><td>5</td></tr>
+<tr><td>14</td><td>8</td><td>SLP001-M-RED</td><td>NULL</td><td>NULL</td><td>M</td><td>Red</td><td>NULL</td><td>14</td></tr>
+<tr><td>15</td><td>9</td><td>SHP001-L-BEI</td><td>NULL</td><td>NULL</td><td>L</td><td>Beige</td><td>NULL</td><td>10</td></tr>
+</table>
+
+<h2>How the mock rows relate</h2>
+<ul>
+<li>Products 1–4 (bras) point at categories 2 ("Push-up"), 4 ("Wireless"), 3 ("Sports") — demonstrating the parent/child category link.</li>
+<li>Product 1 ("Classic Push-up Bra") has 4 variants: two colors of the same 34B, a 36C that's sold out (<code>stock_qty = 0</code>) to show a stock-out case, and a 38D with a <code>price_override</code> to show the larger-band-costs-more case.</li>
+<li>Products 5–9 use <code>size_label</code> instead of band/cup, showing the "mutually exclusive" rule in the Variant table.</li>
+<li>Product 10 has <code>is_active = false</code> and intentionally has <strong>no variants</strong> yet — a case worth deciding: should a product be allowed to exist with zero variants (e.g. "coming soon")?</li>
+</ul>
+
+<footer>Draft v1 — generated for brainstorm review. Nothing here is implemented yet; once we settle the open questions, this becomes the file-by-file brief for Backend Team.</footer>
+
+</body>
+</html>

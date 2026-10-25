@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ShoppingStore — Schema Draft v2 (Full Flow: Catalog / Orders / Users / Comments / Logs)</title>
+<style>
+  :root {
+    --fg: #1a1a1a; --muted: #666; --border: #ddd; --accent: #2a5cff; --pk: #0b6e4f; --fk: #a94442;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Arial, sans-serif; margin: 0; color: var(--fg); line-height: 1.5; }
+  header { padding: 20px 28px; border-bottom: 3px solid #333; }
+  header h1 { margin: 0 0 6px; font-size: 1.5em; }
+  header p { margin: 0; color: var(--muted); font-size: 0.92em; }
+  .status { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.75em; font-weight: 600; background: #fde9e9; color: var(--fk); vertical-align: middle; margin-left: 10px; }
+  nav.tabs { display: flex; border-bottom: 1px solid var(--border); background: #fafafa; position: sticky; top: 0; z-index: 10; }
+  nav.tabs button { border: none; background: none; padding: 14px 22px; font-size: 0.95em; cursor: pointer; border-bottom: 3px solid transparent; color: var(--muted); }
+  nav.tabs button.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  .tabpanel { display: none; }
+  .tabpanel.active { display: block; }
+
+  /* Tab 1: tables + sidebar layout */
+  .layout { display: flex; align-items: flex-start; }
+  .sidebar { width: 230px; flex: none; position: sticky; top: 49px; max-height: calc(100vh - 49px); overflow-y: auto; padding: 18px 10px 40px 20px; border-right: 1px solid var(--border); font-size: 0.88em; }
+  .sidebar-list, .sidebar-list ul { list-style: none; margin: 0; padding: 0; }
+  .sidebar-list > li { margin-bottom: 14px; }
+  .sidebar-list a.grouplink { font-weight: 700; color: #222; text-decoration: none; }
+  .sidebar-list ul { margin-top: 4px; padding-left: 12px; border-left: 2px solid #eee; }
+  .sidebar-list ul li { margin: 3px 0; }
+  .sidebar-list ul a { color: var(--muted); text-decoration: none; font-size: 0.95em; }
+  .sidebar-list a:hover { color: var(--accent); }
+  .content { flex: 1; min-width: 0; padding: 18px 28px 60px; }
+
+  .group { margin-bottom: 36px; scroll-margin-top: 60px; }
+  .group h2 { font-size: 1.2em; border-bottom: 2px solid #333; padding-bottom: 6px; }
+  .tablecard { margin: 18px 0 30px; scroll-margin-top: 60px; }
+  .tablecard h3 { font-size: 1.02em; margin-bottom: 6px; }
+  .rowcount { font-size: 0.75em; color: var(--muted); font-weight: 400; }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.82em; white-space: nowrap; }
+  th, td { border: 1px solid var(--border); padding: 5px 9px; text-align: left; }
+  th { background: #333; color: #fff; font-weight: 600; }
+  th.pk { background: var(--pk); }
+  th.fk { background: var(--fk); }
+  .fklabel { font-size: 0.85em; font-weight: 400; opacity: 0.9; }
+  tr:nth-child(even) { background: #f7f7f7; }
+  .null { color: #aaa; font-style: italic; }
+
+  /* Tabs 2 & 3: flows */
+  .flows { padding: 20px 28px 60px; max-width: 900px; }
+  .flowcard { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 18px; overflow: hidden; }
+  .flowcard h3 { margin: 0; padding: 10px 16px; background: #f1f3f8; font-size: 1em; }
+  .steps { padding: 10px 16px; }
+  .step { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; border-bottom: 1px dashed #eee; font-size: 0.9em; }
+  .step:last-child { border-bottom: none; }
+  .op { flex: none; width: 120px; font-weight: 700; font-size: 0.8em; padding: 2px 8px; border-radius: 4px; text-align: center; }
+  .op-insert { background: #e6f4ea; color: #0b6e4f; }
+  .op-update { background: #fff4e5; color: #b26a00; }
+  .op-select { background: #e8f0fe; color: #2a5cff; }
+  .op-delete { background: #fde9e9; color: #a94442; }
+  .entity { flex: none; width: 220px; font-weight: 600; font-family: monospace; }
+  .detail { color: var(--muted); }
+
+  footer { padding: 20px 28px 50px; font-size: 0.85em; color: #777; border-top: 1px solid var(--border); margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ShoppingStore Backend — Schema Draft v2 <span class="status">BRAINSTORM — NOT FINAL</span></h1>
+  <p>Full flow: Category / Product / Variant management, Orders, Descriptions &amp; Comments, Users, Images, Logs — 17 tables, 199 mock rows, cross-referenced. This extends <code>schema-v1-draft.html</code> (Products/Categories/Variants only) per the 2026-10-24 brainstorm. Nothing here is implemented; this is a discussion artifact for Backend Team to turn into the real brief once settled.</p>
+</header>
+
+<nav class="tabs">
+  <button class="tabbtn active" data-tab="tables">1. Tables (mock data)</button>
+  <button class="tabbtn" data-tab="admin">2. Admin flows</button>
+  <button class="tabbtn" data-tab="customer">3. Customer flows</button>
+</nav>
+
+<div id="tables" class="tabpanel active">
+  <div class="layout">
+    <aside class="sidebar"><ul class='sidebar-list'><li><a href='#group-category' class='grouplink'>Category Management</a><ul><li><a href='#tbl-Category'>Category</a></li></ul></li><li><a href='#group-product' class='grouplink'>Product Management</a><ul><li><a href='#tbl-Product'>Product</a></li><li><a href='#tbl-ProductSpec'>ProductSpec</a></li></ul></li><li><a href='#group-variant' class='grouplink'>Variant Management</a><ul><li><a href='#tbl-Variant'>Variant</a></li><li><a href='#tbl-ProductImage'>ProductImage</a></li></ul></li><li><a href='#group-order' class='grouplink'>Order Tables</a><ul><li><a href='#tbl-Order'>Order</a></li><li><a href='#tbl-OrderItem'>OrderItem</a></li><li><a href='#tbl-OrderStatusHistory'>OrderStatusHistory</a></li><li><a href='#tbl-PaymentTransaction'>PaymentTransaction</a></li><li><a href='#tbl-Shipment'>Shipment</a></li><li><a href='#tbl-ReturnRequest'>ReturnRequest</a></li></ul></li><li><a href='#group-comments' class='grouplink'>Descriptions &amp; Comments</a><ul><li><a href='#tbl-Comment'>Comment</a></li></ul></li><li><a href='#group-users' class='grouplink'>User Tables</a><ul><li><a href='#tbl-User'>User</a></li><li><a href='#tbl-Address'>Address</a></li><li><a href='#tbl-OTPCode'>OTPCode</a></li><li><a href='#tbl-CartItem'>CartItem</a></li></ul></li><li><a href='#group-logs' class='grouplink'>Logs</a><ul><li><a href='#tbl-AdminActionLog'>AdminActionLog</a></li></ul></li></ul></aside>
+    <div class="content">
+      
+    <section class="group" id="group-category">
+      <h2>Category Management</h2>
+      
+    <div class="tablecard" id="tbl-Category">
+      <h3>Category <span class="rowcount">10 rows</span></h3>
+      <div class="tablewrap"><table><tr><th class='pk'>id</th><th>name</th><th>slug</th><th class='fk'>parent_id<br><span class='fklabel'>→ Category.id</span></th></tr><tr><td>1</td><td>Bras</td><td>bras</td><td><span class='null'>NULL</span></td></tr><tr><td>2</td><td>Push-up Bras</td><td>push-up-bras</td><td>1</td></tr><tr><td>3</td><td>Sports Bras</td><td>sports-bras</td><td>1</td></tr><tr><td>4</td><td>Wireless Bras</td><td>wireless-bras</td><td>1</td></tr><tr><td>5</td><td>Panties</td><td>panties</td><td><span class='null'>NULL</span></td></tr><tr><td>6</td><td>Briefs</td><td>briefs</td><td>5</td></tr><tr><td>7</td><td>Thongs</td><td>thongs</td><td>5</td></tr><tr><td>8</td><td>Sets</td><td>sets</td><td><span class='null'>NULL</span></td></tr><tr><td>9</td><td>Sleepwear</td><td>sleepwear</td><td><span class='null'>NULL</span></td></tr><tr><td>10</td><td>Shapewear</td><td>shapewear</td><td><span class='null'>NULL</span></td></tr></table></div>
+    </div>
+    
+    </section>
+    
+    <section class="group" id="group-product">
+      <h2>Product Management</h2>
+      
+    <div class="tablecard" id="tbl-Product">
+      <h3>Product <span class="rowcount">10 rows</span></h3>
+      <div class="tablewrap"><table><tr><th class='pk'>id</th><th>product_code</th><th>name</th><th class='fk'>category_id<br><span class='fklabel'>→ Category.id</span></th><th>base_price</th><th>is_active</th><th>created_at</th></tr><tr><td>1</td><td>BRA001</td><td>Classic Push-up Bra</td><td>2</td><td>890000</td><td>True</td><td>2026-01-05</td></tr><tr><td>2</td><td>BRA002</td><td>Everyday Wireless Bra</td><td>4</td><td>750000</td><td>True</td><td>2026-01-06</td></tr><tr><td>3</td><td>BRA003</td><td>Active Sports Bra</td><td>3</td><td>680000</td><td>True</td><td>2026-01-08</td></tr><tr><td>4</td><td>BRA004</td><td>Lace Push-up Bra</td><td>2</td><td>950000</td><td>True</td><td>2026-01-10</td></tr><tr><td>5</td><td>PAN001</td><td>Cotton Brief</td><td>6</td><td>290000</td><td>True</td><td>2026-01-11</td></tr><tr><td>6</td><td>PAN002</td><td>Lace Thong</td><td>7</td><td>250000</td><td>True</td><td>2026-01-12</td></tr><tr><td>7</td><td>SET001</td><td>Satin Bra &amp; Brief Set</td><td>8</td><td>1200000</td><td>True</td><td>2026-01-14</td></tr><tr><td>8</td><td>SLP001</td><td>Silk Sleep Slip</td><td>9</td><td>980000</td><td>True</td><td>2026-01-15</td></tr><tr><td>9</td><td>SHP001</td><td>Waist Shaper</td><td>10</td><td>1100000</td><td>True</td><td>2026-01-16</td></tr><tr><td>10</td><td>BRA005</td><td>Minimizer Bra</td><td>1</td><td>820000</td><td>False</td><td>2026-01-18</td></tr></table></div>
+    </div>
+    
+    <div class="tablecard" id="tbl-ProductSpec">
+      <h3>ProductSpec <span class="rowcount">10 rows</span></h3>
+      <div class="tablewrap"><table><tr><th class='pk'>id</th><th class='fk'>product_id<br><span class='fklabel'>→ Product.id</span></th><th>fabric</th><th>care_instructions</th><th>origin_country</th></tr><tr><td>1</td><td>1</td><td>85% Polyamide / 15% Elastane</td><td>Hand wash cold, do not tumble dry</td><td>Turkey</td></tr><tr><td>2</td><td>2</td><td>90% Cotton / 10% Elastane</td><td>Machine wash gentle, air dry</td><td>Iran</td></tr><tr><td>3</td><td>3</td><td>78% Polyester / 22% Spandex</td><td>Machine wash cold, air dry</td><td>Iran</td></tr><tr><td>4</td><td>4</td><td>70% Nylon / 20% Lace / 10% Elastane</td><td>Hand wash only, lay flat to dry</td><td>Turkey</td></tr><tr><td>5</td><td>5</td><td>95% Cotton / 5% Elastane</td><td>Machine wash warm</td><td>Iran</td></tr><tr><td>6</td><td>6</td><td>80% Nylon Lace / 20% Elastane</td><td>Hand wash cold</td><td>Turkey</td></tr><tr><td>7</td><td>7</td><td>100% Satin Polyester</td><td>Dry clean recommended</td><td>China</td></tr><tr><td>8</td><td>8</td><td>100% Mulberry Silk</td><td>Dry clean only</td><td>China</td></tr><tr><td>9</td><td>9</td><td>60% Nylon / 40% Spandex</td><td>Hand wash cold, lay flat to dry</td><td>Iran</td></tr><tr><td>10</td><td>10</td><td>88% Polyamide / 12% Elastane</td><td>Hand wash cold</td><td>Turkey</td></tr></table></div>
+    </div>
+    
+    </section>
+    
+    <section class="group" id="group-variant">
+      <h2>Variant Management</h2>
+      
+    <div class="tablecard" id="tbl-Variant">
+      <h3>Variant <span class="rowcount">15 rows</span></h3>
+      <div class="tablewrap"><table><tr><th class='pk'>id</th><th class='fk'>product_id<br><span class='fklabel'>→ Product.id</span></th><th>sku</th><th>band</th><th>cup</th><th>size_label</th><th>color</th><th>price_override</th><th>stock_qty</th></tr><tr><td>1</td><td>1</td><td>BRA001-34B-BLK</td><td>34</td><td>B</td><td><span class='null'>NULL</span></td><td>Black</td><td><span class='null'>NULL</span></td><td>18</td></tr><tr><td>2</td><td>1</td><td>BRA001-34B-NUD</td><td>34</td><td>B</td><td><span class='null'>NULL</span></td><td>Nude</td><td><span class='null'>NULL</span></td><td>12</td></tr><tr><td>3</td><td>1</td><td>BRA001-36C-BLK</td><td>36</td><td>C</td><td><span class='null'>NULL</span></td><td>Black</td><td><span class='null'>NULL</span></td><td>0</td></tr><tr><td>4</td><td>1</td><td>BRA001-38D-BLK</td><td>38</td><td>D</td><td><span class='null'>NULL</span></td><td>Black</td><td>50000</td><td>7</td></tr><tr><td>5</td><td>2</td><td>BRA002-32A-NUD</td><td>32</td><td>A</td><td><span class='null'>NULL</span></td><td>Nude</td><td><span class='null'>NULL</span></td><td>20</td></tr><tr><td>6</td><td>2</td><td>BRA002-34B-BLK</td><td>34</td><td>B</td><td><span class='null'>NULL</span></td><td>Black</td><td><span class='null'>NULL</span></td><td>15</td></tr><tr><td>7</td><td>3</td><td>BRA003-34B-GRY</td><td>34</td><td>B</td><td><span class='null'>NULL</span></td><td>Grey</td><td><span class='null'>NULL</span></td><td>25</td></tr><tr><td>8</td><td>3</td><td>BRA003-36C-GRY</td><td>36</td><td>C</td><td><span class='null'>NULL</span></td><td>Grey</td><td><span class='null'>NULL</span></td><td>9</td></tr><tr><td>9</td><td>4</td><td>BRA004-34B-RED</td><td>34</td><td>B</td><td><span class='null'>NULL</span></td><td>Red</td><td><span class='null'>NULL</span></td><td>6</td></tr><tr><td>10</td><td>5</td><td>PAN001-M-WHT</td><td><span class='null'>NULL</span></td><td><span class='null'>NULL</span></td><td>M</td><td>White</td><td><span class='null'>NULL</span></td><td>40</td></tr><tr><td>11</td><td>5</td><td>PAN001-L-WHT</td><td><span class='null'>NULL</span></td><td><span class='null'>NULL</span></td><td>L</td><td>White</td><td><span class='null'>NULL</span></td><td>30</td></tr><tr><td>12</td><td>6</td><td>PAN002-S-BLK</td><td><span class='null'>NULL</span></td><td><span class='null'>NULL</span></td><td>S</td><td>Black</td><td><span class='null'>NULL</span></td><td>22</td></tr><tr><td>13</td><td>7</td><td>SET001-34B-IVR</td><td>34</td><td>B</td><td><span class='null'>NULL</span></td><td>Ivory</td><td><span class='null'>NULL</span></td><td>5</td></tr><tr><td>14</td><td>8</td><td>SLP001-M-RED</td><td><span class='null'>NULL</span></td><td><span class='null'>NULL</span></td><td>M</td><td>Red</td><td><span class='null'>NULL</span></td><td>14</td></tr><tr><td>15</td><td>9</td><td>SHP001-L-BEI</td><td><span class='null'>NULL</span></td><td><span class='null'>NULL</span></td><td>L</td><td>Beige</td><td><span class='null'>NULL</span></td><td>10</td></tr></table></div>
+    </div>
+    
+    <div class="tablecard" id="tbl-ProductImage">
+      <h3>ProductImage <span class="rowcount">13 rows</span></h3>
+      <div class="tablewrap"><table><tr><th class='pk'>id</th><th class='fk'>product_id<br><span class='fklabel'>→ Product.id</span></th><th class='fk'>variant_id<br><span class='fklabel'>→ Variant.id</span></th><th>url</th><th>sort_order</th><th>is_primary</th></tr><tr><td>1</td><td>1</td><td><span class='null'>NULL</span></td><td>/media/bra001/front.jpg</td><td>1</td><td>True</td></tr><tr><td>2</td><td>1</td><td>1</td><td>/media/bra001/34b-black.jpg</td><td>2</td><td>False</td></tr><tr><td>3</td><td>1</td><td>2</td><td>/media/bra001/34b-nude.jpg</td><td>3</td><td>False</td></tr><tr><td>4</td><td>2</td><td><span class='null'>NULL</span></td><td>/media/bra002/front.jpg</td><td>1</td><td>True</td></tr><tr><td>5</td><td>3</td><td><span class='null'>NULL</span></td><td>/media/bra003/front.jpg</td><td>1</td><td>True</td></tr><tr><td>6</td><td>4</td><td><span class='null'>NULL</span></td><td>/media/bra004/front.jpg</td><td>1</td><td>True</td></tr><tr><td>7</td><td>4</td><td>9</td><td>/media/bra004/34b-red.jpg</td><td>2</td><td>False</td></tr><tr><td>8</td><td>5</td><td><span class='null'>NULL</span></td><td>/media/pan001/front.jpg</td><td>1</td><td>True</td></tr><tr><td>9</td><td>6</td><td><span class='null'>NULL</span></td><td>/media/pan002/front.jpg</td><td>1</td><td>True</td></tr><tr><td>10</td><td>7</td><td><span class='null'>NULL</span></td><td>/media/set001/front.jpg</td><td>1</td><td>True</td></tr><tr><td>11</td><td>8</td><td><span class='null'>NULL</span></td><td>/media/slp001/front.jpg</td><td>1</td><td>True</td></tr><tr><td>12</td><td>9</td><td><span class='null'>NULL</span></td><td>/media/shp001/front.jpg</td><td>1</td><td>True</td></tr><tr><td>13</td><td>10</td><td><span class='null'>NULL</span></td><td>/media/bra005/front.jpg</td><td>1</td><td>True</td></tr></table></div>
+    </div>
+    
+    </section>
+    
+    <section class="group" id="group-order">
+      <h2>Order Tables</h2>
+      
+    <div class="tablecard" id="tbl-Order">
+      <h3>Order <span class="rowcount">10 rows</span></h3>
+      <div class="tablewrap"><table><tr><th class='pk'>id</th><th class='fk'>user_id<br><span class='fklabel'>→ User.id</span></th><th class='fk'>address_id<br><span class='fklabel'>→ Address.id</span></th><th>status</th><th>total_amount</th><th>payment_method</th><th>created_at</th></tr><tr><td>1</td><td>1</td><td>1</td><td>delivered</td><td>1780000</td><td>online</td><td>2026-01-20 10:00</td></tr><tr><td>2</td><td>2</td><td>2</td><td>delivered</td><td>580000</td><td>cod</td><td>2026-01-21 11:30</td></tr><tr><td>3</td><td>3</td><td>3</td><td>shipped</td><td>1200000</td><td>online</td><td>2026-01-22 14:00</td></tr><tr><td>4</td><td>4</td><td>4</td><td>returned</td><td>950000</td><td>online</td><td>2026-01-23 09:15</td></tr><tr><td>5</td><td>5</td><td>5</td><td>paid</td><td>680000</td><td>online</td><td>2026-01-24 16:45</td></tr><tr><td>6</td><td>6</td><td>6</td><td>placed</td><td>290000</td><td>cod</td><td>2026-01-25 12:00</td></tr><tr><td>7</td><td>7</td><td>7</td><td>delivered</td><td>2050000</td><td>online</td><td>2026-01-26 18:20</td></tr><tr><td>8</td><td>8</td><td>8</td><td>cancelled</td><td>750000</td><td>online</td><td>2026-01-27 08:40</td></tr><tr><td>9</td><td>9</td><td>9</td><td>shipped</td><td>940000</td><td>cod</td><td>2026-01-28 13:10</td></tr><tr><td>10</td><td>10</td><td>10</td><td>placed</td><td>1100000</td><td>online</td><td>2026-01-29 20:00</td></tr></table></div>
+    </div>
+    
+    <div class="tablecard" id="tbl-OrderItem">
+      <h3>OrderItem <span class="rowcount">13 rows</span></h3>
+      <div class="tablewrap"><table><tr><th class='pk'>id</th><th class='fk'>order_id<br><span class='fklabel'>→ Order.id</span></th><th class='fk'>variant_id<br><span class='fklabel'>→ Variant.id</span></th><th>quantity</th><th>unit_price</th></tr><tr><td>1</td><td>1</td><td>1</td><td>1</td><td>890000</td></tr><tr><td>2</td><td>1</td><td>2</td><td>1</td><td>890000</td></tr><tr><td>3</td><td>2</td><td>10</td><td>2</td><td>290000</td></tr><tr><td>4</td><td>3</td><td>13</td><td>1</td><td>1200000</td></tr><tr><td>5</td><td>4</td><td>9</td><td>1</td><td>950000</td></tr><tr><td>6</td><td>5</td><td>7</td><td>1</td><td>680000</td></tr><tr><td>7</td><td>6</td><td>10</td><td>1</td><td>290000</td></tr><tr><td>8</td><td>7</td><td>4</td><td>1</td><td>940000</td></tr><tr><td>9</td><td>7</td><td>11</td><td>2</td><td>290000</td></tr><tr><td>10</td><td>7</td><td>6</td><td>1</td><td>750000</td></tr><tr><td>11</td><td>8</td><td>6</td><td>1</td><td>750000</td></tr><tr><td>12</td><td>9</td><td>14</td><td>1</td><td>940000</td></tr><tr><td>13</td><td>10</td><td>15</td><td>1</td><td>1100000</td></tr></table></div>
+    </div>
+    
+    <div class="tablecard" id="tbl-OrderStatusHistory">
+      <h3>OrderStatusHistory <span class="rowcount">27 rows</span></h3>
+      <div class="tablewrap"><table><tr><th class='pk'>id</th><th class='fk'>order_id<br><span class='fklabel'>→ Order.id</span></th><th>status</th><th>changed_at</th><th>changed_by</th></tr><tr><td>1</td><td>1</td><td>placed</td><td>2026-01-20 10:00</td><td>customer</td></tr><tr><td>2</td><td>1</td><td>paid</td><td>2026-01-20 10:05</td><td>system</td></tr><tr><td>3</td><td>1</td><td>shipped</td><td>2026-01-21 09:00</td><td>admin</td></tr><tr><td>4</td><td>1</td><td>delivered</td><td>2026-01-23 14:00</td><td>courier</td></tr><tr><td>5</td><td>2</td><td>placed</td><td>2026-01-21 11:30</td><td>customer</td></tr><tr><td>6</td><td>2</td><td>shipped</td><td>2026-01-22 10:00</td><td>admin</td></tr><tr><td>7</td><td>2</td><td>delivered</td><td>2026-01-24 12:00</td><td>courier</td></tr><tr><td>8</td><td>3</td><td>placed</td><td>2026-01-22 14:00</td><td>customer</td></tr><tr><td>9</td><td>3</td><td>paid</td><td>2026-01-22 14:05</td><td>system</td></tr><tr><td>10</td><td>3</td><td>shipped</td><td>2026-01-23 11:00</td><td>admin</td></tr><tr><td>11</td><td>4</td><td>placed</td><td>2026-01-23 09:15</td><td>customer</td></tr><tr><td>12</td><td>4</td><td>paid</td><td>2026-01-23 09:20</td><td>system</td></tr><tr><td>13</td><td>4</td><td>shipped</td><td>2026-01-24 10:00</td><td>admin</td></tr><tr><td>14</td><td>4</td><td>delivered</td><td>2026-01-26 13:00</td><td>courier</td></tr><tr><td>15</td><td>4</td><td>returned</td><td>2026-01-29 09:00</td><td>admin</td></tr><tr><td>16</td><td>5</td><td>placed</td><td>2026-01-24 16:45</td><td>customer</td></tr><tr><td>17</td><td>5</td><td>paid</td><td>2026-01-24 16:50</td><td>system</td></tr><tr><td>18</td><td>6</td><td>placed</td><td>2026-01-25 12:00</td><td>customer</td></tr><tr><td>19</td><td>7</td><td>placed</td><td>2026-01-26 18:20</td><td>customer</td></tr><tr><td>20</td><td>7</td><td>paid</td><td>2026-01-26 18:25</td><td>system</td></tr><tr><td>21</td><td>7</td><td>shipped</td><td>2026-01-27 10:00</td><td>admin</td></tr><tr><td>22</td><td>7</td><td>delivered</td><td>2026-01-29 15:00</td><td>courier</td></tr><tr><td>23</td><td>8</td><td>placed</td><td>2026-01-27 08:40</td><td>customer</td></tr><tr><td>24</td><td>8</td><td>cancelled</td><td>2026-01-27 09:00</td><td>customer</td></tr><tr><td>25</td><td>9</td><td>placed</td><td>2026-01-28 13:10</td><td>customer</td></tr><tr><td>26</td><td>9</td><td>shipped</td><td>2026-01-29 09:30</td><td>admin</td></tr><tr><td>27</td><td>10</td><td>placed</td><td>2026-01-29 20:00</td><td>customer</td></tr></table></div>
+    </div>
+    
+    <div class="tablecard" id="tbl-PaymentTransaction">
+      <h3>PaymentTransaction <span class="rowcount">10 rows</span></h3>
+      <div class="tablewrap"><table><tr><th class='pk'>id</th><th class='fk'>order_id<br><span class='fklabel'>→ Order.id</span></th><th>gateway</th><th>amount</th><th>status</th><th>ref_code</th><th>paid_at</th></tr><tr><td>1</td><td>1</td><td>Zarinpal</td><td>1780000</td><td>success</td><td>ZP-10021</td><td>2026-01-20 10:04</td></tr><tr><td>2</td><td>2</td><td>COD</td><td>580000</td><td>pending_collection</td><td><span class='null'>NULL</span></td><td><span class='null'>NULL</span></td></tr><tr><td>3</td><td>3</td><td>IDPay</td><td>1200000</td><td>success</td><td>ID-55214</td><td>2026-01-22 14:04</td></tr><tr><td>4</td><td>4</td><td>Zarinpal</td><td>950000</td><td>success</td><td>ZP-10034</td><td>2026-01-23 09:19</td></tr><tr><td>5</td><td>5</td><td>Zarinpal</td><td>680000</td><td>success</td><td>ZP-10041</td><td>2026-01-24 16:49</td></tr><tr><td>6</td><td>6</td><td>COD</td><td>290000</td><td>pending_collection</td><td><span class='null'>NULL</span></td><td><span class='null'>NULL</span></td></tr><tr><td>7</td><td>7</td><td>NextPay</td><td>2050000</td><td>success</td><td>NP-77210</td><td>2026-01-26 18:24</td></tr><tr><td>8</td><td>8</td><td>Zarinpal</td><td>750000</td><td>failed</td><td>ZP-10052</td><td><span class='null'>NULL</span></td></tr><tr><td>9</td><td>9</td><td>COD</td><td>940000</td><td>pending_collection</td><td><span class='null'>NULL</span></td><td><span class='null'>NULL</span></td></tr><tr><td>10</td><td>10</td><td>IDPay</td><td>1100000</td><td>initiated</td><td>ID-55300</td><td><span class='null'>NULL</span></td></tr></table></div>
+    </div>
+    
+    <div class="tablecard" id="tbl-Shipment">
+      <h3>Shipment <span class="rowcount">10 rows</span></h3>
+      <div class="tablewrap"><table><tr><th class='pk'>id</th><th class='fk'>order_id<br><span class='fklabel'>→ Order.id</span></th><th>courier</th><th>tracking_code</th><th>status</th><th>shipped_at</th><th>delivered_at</th></tr><tr><td>1</td><td>1</td><td>Iran Post</td><td>IRP-900211</td><td>delivered</td><td>2026-01-21 09:00</td><td>2026-01-23 14:00</td></tr><tr><td>2</td><td>2</td><td>Tipax</td><td>TPX-110233</td><td>delivered</td><td>2026-01-22 10:00</td><td>2026-01-24 12:00</td></tr><tr><td>3</td><td>3</td><td>Snapp Box</td><td>SNB-330441</td><td>in_transit</td><td>2026-01-23 11:00</td><td><span class='null'>NULL</span></td></tr><tr><td>4</td><td>4</td><td>Tipax</td><td>TPX-110298</td><td>returned_to_sender</td><td>2026-01-24 10:00</td><td>2026-01-26 13:00</td></tr><tr><td>5</td><td>5</td><td>Iran Post</td><td><span class='null'>NULL</span></td><td>pending_pickup</td><td><span class='null'>NULL</span></td><td><span class='null'>NULL</span></td></tr><tr><td>6</td><td>6</td><td>Alopeyk</td><td><span class='null'>NULL</span></td><td>pending_pickup</td><td><span class='null'>NULL</span></td><td><span class='null'>NULL</span></td></tr><tr><td>7</td><td>7</td><td>Snapp Box</td><td>SNB-330502</td><td>delivered</td><td>2026-01-27 10:00</td><td>2026-01-29 15:00</td></tr><tr><td>8</td><td>8</td><td>Tipax</td><td><span class='null'>NULL</span></td><td>cancelled</td><td><span class='null'>NULL</span></td><td><span class='null'>NULL</span></td></tr><tr><td>9</td><td>9</td><td>Alopeyk</td><td>ALP-220190</td><td>in_transit</td><td>2026-01-29 09:30</td><td><span class='null'>NULL</span></td></tr><tr><td>10</td><td>10</td><td>Iran Post</td><td><span class='null'>NULL</span></td><td>pending_pickup</td><td><span class='null'>NULL</span></td><td><span class='null'>NULL</span></td></tr></table></div>
+    </div>
+    
+    <div class="tablecard" id="tbl-ReturnRequest">
+      <h3>ReturnRequest <span class="rowcount">10 rows</span></h3>
+      <div class="tablewrap"><table><tr><th class='pk'>id</th><th class='fk'>order_item_id<br><span class='fklabel'>→ OrderItem.id</span></th><th>reason</th><th class='fk'>requested_exchange_variant_id<br><span class='fklabel'>→ Variant.id</span></th><th>status</th><th>created_at</th></tr><tr><td>1</td><td>5</td><td>Band too tight (34B runs small)</td><td>9</td><td>exchanged</td><td>2026-01-27 10:00</td></tr><tr><td>2</td><td>1</td><td>Wrong color delivered</td><td><span class='null'>NULL</span></td><td>refunded</td><td>2026-01-24 09:00</td></tr><tr><td>3</td><td>9</td><td>Cup size too small</td><td>6</td><td>exchanged</td><td>2026-01-28 11:00</td></tr><tr><td>4</td><td>3</td><td>Changed mind</td><td><span class='null'>NULL</span></td><td>rejected</td><td>2026-01-25 13:00</td></tr><tr><td>5</td><td>6</td><td>Fabric irritation</td><td><span class='null'>NULL</span></td><td>refunded</td><td>2026-01-26 08:00</td></tr><tr><td>6</td><td>10</td><td>Band too loose</td><td>4</td><td>pending</td><td>2026-01-30 09:00</td></tr><tr><td>7</td><td>2</td><td>Size runs large</td><td>1</td><td>exchanged</td><td>2026-01-24 09:30</td></tr><tr><td>8</td><td>7</td><td>Defective hardware (clasp broken)</td><td><span class='null'>NULL</span></td><td>refunded</td><td>2026-01-29 10:00</td></tr><tr><td>9</td><td>12</td><td>Color faded after wash</td><td><span class='null'>NULL</span></td><td>pending</td><td>2026-01-30 12:00</td></tr><tr><td>10</td><td>13</td><td>Not as described</td><td><span class='null'>NULL</span></td><td>rejected</td><td>2026-01-31 09:00</td></tr></table></div>
+    </div>
+    
+    </section>
+    
+    <section class="group" id="group-comments">
+      <h2>Descriptions &amp; Comments</h2>
+      
+    <div class="tablecard" id="tbl-Comment">
+      <h3>Comment <span class="rowcount">10 rows</span></h3>
+      <div class="tablewrap"><table><tr><th class='pk'>id</th><th class='fk'>product_id<br><span class='fklabel'>→ Product.id</span></th><th class='fk'>user_id<br><span class='fklabel'>→ User.id</span></th><th class='fk'>order_id<br><span class='fklabel'>→ Order.id</span></th><th>rating</th><th>fit_feedback</th><th>body</th><th>created_at</th></tr><tr><td>1</td><td>1</td><td>1</td><td>1</td><td>5</td><td>true_to_size</td><td>Super comfortable and great support.</td><td>2026-01-24 10:00</td></tr><tr><td>2</td><td>1</td><td>3</td><td><span class='null'>NULL</span></td><td>2</td><td>runs_small</td><td>Had to size up, band was tight.</td><td>2026-01-25 12:00</td></tr><tr><td>3</td><td>2</td><td>2</td><td>2</td><td>4</td><td>true_to_size</td><td>Good everyday bra, no complaints.</td><td>2026-01-25 09:00</td></tr><tr><td>4</td><td>3</td><td>5</td><td>5</td><td>5</td><td>true_to_size</td><td>Perfect for workouts, stays in place.</td><td>2026-01-26 14:00</td></tr><tr><td>5</td><td>4</td><td>4</td><td>4</td><td>3</td><td>runs_small</td><td>Pretty lace but cup was snug.</td><td>2026-01-27 11:00</td></tr><tr><td>6</td><td>5</td><td>6</td><td>6</td><td>5</td><td>true_to_size</td><td>Soft cotton, fits as expected.</td><td>2026-01-27 15:00</td></tr><tr><td>7</td><td>6</td><td>7</td><td><span class='null'>NULL</span></td><td>4</td><td>runs_large</td><td>Comfortable but slightly loose.</td><td>2026-01-28 10:00</td></tr><tr><td>8</td><td>7</td><td>7</td><td>7</td><td>5</td><td>true_to_size</td><td>Beautiful set, fits perfectly.</td><td>2026-01-29 13:00</td></tr><tr><td>9</td><td>8</td><td>9</td><td>9</td><td>4</td><td>true_to_size</td><td>Luxurious fabric, true to size.</td><td>2026-01-30 16:00</td></tr><tr><td>10</td><td>9</td><td>1</td><td><span class='null'>NULL</span></td><td>3</td><td>runs_small</td><td>Good compression but order one size up.</td><td>2026-01-31 09:00</td></tr></table></div>
+    </div>
+    
+    </section>
+    
+    <section class="group" id="group-users">
+      <h2>User Tables</h2>
+      
+    <div class="tablecard" id="tbl-User">
+      <h3>User <span class="rowcount">10 rows</span></h3>
+      <div class="tablewrap"><table><tr><th class='pk'>id</th><th>mobile_number</th><th>full_name</th><th>is_verified</th><th>created_at</th></tr><tr><td>1</td><td>0912xxxxxxx-1</td><td>Sara Ahmadi</td><td>True</td><td>2026-01-02</td></tr><tr><td>2</td><td>0912xxxxxxx-2</td><td>Niloofar Rezaei</td><td>True</td><td>2026-01-03</td></tr><tr><td>3</td><td>0912xxxxxxx-3</td><td>Maryam Hosseini</td><td>True</td><td>2026-01-05</td></tr><tr><td>4</td><td>0912xxxxxxx-4</td><td>Parisa Karimi</td><td>True</td><td>2026-01-07</td></tr><tr><td>5</td><td>0912xxxxxxx-5</td><td>Elham Moradi</td><td>False</td><td>2026-01-09</td></tr><tr><td>6</td><td>0912xxxxxxx-6</td><td>Zahra Sadeghi</td><td>True</td><td>2026-01-10</td></tr><tr><td>7</td><td>0912xxxxxxx-7</td><td>Roya Jafari</td><td>True</td><td>2026-01-12</td></tr><tr><td>8</td><td>0912xxxxxxx-8</td><td>Mina Ghorbani</td><td>True</td><td>2026-01-14</td></tr><tr><td>9</td><td>0912xxxxxxx-9</td><td>Leila Nazari</td><td>True</td><td>2026-01-16</td></tr><tr><td>10</td><td>0912xxxxxxx-10</td><td>Fatemeh Rostami</td><td>False</td><td>2026-01-19</td></tr></table></div>
+    </div>
+    
+    <div class="tablecard" id="tbl-Address">
+      <h3>Address <span class="rowcount">10 rows</span></h3>
+      <div class="tablewrap"><table><tr><th class='pk'>id</th><th class='fk'>user_id<br><span class='fklabel'>→ User.id</span></th><th>recipient_name</th><th>province</th><th>city</th><th>full_address</th><th>postal_code</th><th>is_default</th></tr><tr><td>1</td><td>1</td><td>Sara Ahmadi</td><td>Tehran</td><td>Tehran</td><td>Valiasr St, No. 120, Unit 4</td><td>1234567890</td><td>True</td></tr><tr><td>2</td><td>2</td><td>Niloofar Rezaei</td><td>Isfahan</td><td>Isfahan</td><td>Chaharbagh Ave, No. 45</td><td>8123456789</td><td>True</td></tr><tr><td>3</td><td>3</td><td>Maryam Hosseini</td><td>Tehran</td><td>Tehran</td><td>Enghelab St, No. 8, Unit 2</td><td>1345678901</td><td>True</td></tr><tr><td>4</td><td>4</td><td>Parisa Karimi</td><td>Fars</td><td>Shiraz</td><td>Zand Blvd, No. 300</td><td>7134567890</td><td>True</td></tr><tr><td>5</td><td>5</td><td>Elham Moradi</td><td>Tehran</td><td>Karaj</td><td>Azadi Sq, No. 15</td><td>3134567890</td><td>True</td></tr><tr><td>6</td><td>6</td><td>Zahra Sadeghi</td><td>Razavi Khorasan</td><td>Mashhad</td><td>Imam Reza Blvd, No. 77</td><td>9134567890</td><td>True</td></tr><tr><td>7</td><td>7</td><td>Roya Jafari</td><td>Tehran</td><td>Tehran</td><td>Sattarkhan St, No. 56, Unit 1</td><td>1456789012</td><td>True</td></tr><tr><td>8</td><td>8</td><td>Mina Ghorbani</td><td>East Azerbaijan</td><td>Tabriz</td><td>Shariati St, No. 22</td><td>5134567890</td><td>True</td></tr><tr><td>9</td><td>9</td><td>Leila Nazari</td><td>Tehran</td><td>Tehran</td><td>Pasdaran St, No. 90, Unit 6</td><td>1678901234</td><td>True</td></tr><tr><td>10</td><td>10</td><td>Fatemeh Rostami</td><td>Alborz</td><td>Karaj</td><td>Golshahr, No. 33</td><td>3178901234</td><td>True</td></tr></table></div>
+    </div>
+    
+    <div class="tablecard" id="tbl-OTPCode">
+      <h3>OTPCode <span class="rowcount">10 rows</span></h3>
+      <div class="tablewrap"><table><tr><th class='pk'>id</th><th class='fk'>user_id<br><span class='fklabel'>→ User.id</span></th><th>code</th><th>purpose</th><th>expires_at</th><th>used</th></tr><tr><td>1</td><td>1</td><td>482913</td><td>login</td><td>2026-01-02 10:05</td><td>True</td></tr><tr><td>2</td><td>2</td><td>118827</td><td>login</td><td>2026-01-03 09:12</td><td>True</td></tr><tr><td>3</td><td>3</td><td>905514</td><td>register</td><td>2026-01-05 14:30</td><td>True</td></tr><tr><td>4</td><td>4</td><td>330219</td><td>login</td><td>2026-01-07 18:01</td><td>True</td></tr><tr><td>5</td><td>5</td><td>774402</td><td>register</td><td>2026-01-09 11:45</td><td>False</td></tr><tr><td>6</td><td>6</td><td>661083</td><td>login</td><td>2026-01-10 08:22</td><td>True</td></tr><tr><td>7</td><td>7</td><td>209964</td><td>login</td><td>2026-01-12 19:50</td><td>True</td></tr><tr><td>8</td><td>8</td><td>558317</td><td>register</td><td>2026-01-14 13:15</td><td>True</td></tr><tr><td>9</td><td>9</td><td>012749</td><td>login</td><td>2026-01-16 16:40</td><td>True</td></tr><tr><td>10</td><td>10</td><td>843205</td><td>register</td><td>2026-01-19 20:05</td><td>False</td></tr></table></div>
+    </div>
+    
+    <div class="tablecard" id="tbl-CartItem">
+      <h3>CartItem <span class="rowcount">10 rows</span></h3>
+      <div class="tablewrap"><table><tr><th class='pk'>id</th><th class='fk'>user_id<br><span class='fklabel'>→ User.id</span></th><th class='fk'>variant_id<br><span class='fklabel'>→ Variant.id</span></th><th>quantity</th><th>added_at</th></tr><tr><td>1</td><td>2</td><td>5</td><td>1</td><td>2026-02-01 10:00</td></tr><tr><td>2</td><td>2</td><td>10</td><td>2</td><td>2026-02-01 10:01</td></tr><tr><td>3</td><td>4</td><td>13</td><td>1</td><td>2026-02-02 09:30</td></tr><tr><td>4</td><td>6</td><td>7</td><td>1</td><td>2026-02-02 15:10</td></tr><tr><td>5</td><td>9</td><td>1</td><td>1</td><td>2026-02-03 11:20</td></tr><tr><td>6</td><td>9</td><td>2</td><td>1</td><td>2026-02-03 11:21</td></tr><tr><td>7</td><td>1</td><td>14</td><td>1</td><td>2026-02-04 08:05</td></tr><tr><td>8</td><td>3</td><td>15</td><td>1</td><td>2026-02-04 19:40</td></tr><tr><td>9</td><td>7</td><td>6</td><td>2</td><td>2026-02-05 12:12</td></tr><tr><td>10</td><td>10</td><td>12</td><td>3</td><td>2026-02-05 17:55</td></tr></table></div>
+    </div>
+    
+    </section>
+    
+    <section class="group" id="group-logs">
+      <h2>Logs</h2>
+      
+    <div class="tablecard" id="tbl-AdminActionLog">
+      <h3>AdminActionLog <span class="rowcount">11 rows</span></h3>
+      <div class="tablewrap"><table><tr><th class='pk'>id</th><th>admin_user</th><th>action</th><th>entity_type</th><th>entity_id</th><th>detail</th><th>created_at</th></tr><tr><td>1</td><td>admin_sara</td><td>create</td><td>Product</td><td>1</td><td>Created product BRA001</td><td>2026-01-05 09:00</td></tr><tr><td>2</td><td>admin_sara</td><td>create</td><td>Variant</td><td>1</td><td>Added variant BRA001-34B-BLK</td><td>2026-01-05 09:05</td></tr><tr><td>3</td><td>admin_reza</td><td>update</td><td>Variant</td><td>3</td><td>Set stock_qty to 0 (sold out)</td><td>2026-01-20 08:00</td></tr><tr><td>4</td><td>admin_sara</td><td>create</td><td>Category</td><td>2</td><td>Created category Push-up Bras</td><td>2026-01-04 10:00</td></tr><tr><td>5</td><td>admin_reza</td><td>update</td><td>Order</td><td>4</td><td>Changed status to shipped</td><td>2026-01-24 10:00</td></tr><tr><td>6</td><td>admin_sara</td><td>create</td><td>User</td><td>1</td><td>Registered via OTP (mobile verified)</td><td>2026-01-02 10:05</td></tr><tr><td>7</td><td>admin_reza</td><td>upload</td><td>ProductImage</td><td>6</td><td>Uploaded front image for BRA004</td><td>2026-01-10 11:00</td></tr><tr><td>8</td><td>admin_sara</td><td>moderate</td><td>Comment</td><td>2</td><td>Approved review with runs_small tag</td><td>2026-01-25 12:30</td></tr><tr><td>9</td><td>admin_reza</td><td>update</td><td>ReturnRequest</td><td>1</td><td>Approved exchange for order_item 5</td><td>2026-01-27 10:30</td></tr><tr><td>10</td><td>admin_sara</td><td>update</td><td>Product</td><td>10</td><td>Set is_active = false (discontinued)</td><td>2026-01-19 09:00</td></tr><tr><td>11</td><td>admin_reza</td><td>update</td><td>Order</td><td>8</td><td>Marked order cancelled after payment failure</td><td>2026-01-27 09:00</td></tr></table></div>
+    </div>
+    
+    </section>
+    
+    </div>
+  </div>
+</div>
+
+<div id="admin" class="tabpanel">
+  <div class="flows">
+    <p style="color:#666;font-size:0.92em;">Each admin action below lists the tables it touches, in order. Not all operations are final — e.g. comment moderation has no approval column yet (flagged as an open question).</p>
+    
+    <div class="flowcard">
+      <h3>Add a category</h3>
+      <div class="steps"><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>Category</span><span class='detail'>new row (name, slug, parent_id)</span></div><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>AdminActionLog</span><span class='detail'>action=create, entity_type=Category</span></div></div>
+    </div>
+    
+    <div class="flowcard">
+      <h3>Add a product</h3>
+      <div class="steps"><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>Product</span><span class='detail'>new row (product_code, name, category_id, base_price, is_active=true)</span></div><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>ProductSpec</span><span class='detail'>new row (fabric, care_instructions, origin_country) — 1:1 with Product</span></div><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>AdminActionLog</span><span class='detail'>action=create, entity_type=Product</span></div></div>
+    </div>
+    
+    <div class="flowcard">
+      <h3>Add a variant</h3>
+      <div class="steps"><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>Variant</span><span class='detail'>new row (product_id, sku, band/cup or size_label, color, stock_qty)</span></div><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>AdminActionLog</span><span class='detail'>action=create, entity_type=Variant</span></div></div>
+    </div>
+    
+    <div class="flowcard">
+      <h3>Update stock for a variant</h3>
+      <div class="steps"><div class='step'><span class='op op-update'>UPDATE</span><span class='entity'>Variant</span><span class='detail'>stock_qty</span></div><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>AdminActionLog</span><span class='detail'>action=update, entity_type=Variant, detail=stock change</span></div></div>
+    </div>
+    
+    <div class="flowcard">
+      <h3>Upload a product/variant image</h3>
+      <div class="steps"><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>ProductImage</span><span class='detail'>new row (product_id, variant_id?, url, sort_order, is_primary)</span></div><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>AdminActionLog</span><span class='detail'>action=upload, entity_type=ProductImage</span></div></div>
+    </div>
+    
+    <div class="flowcard">
+      <h3>Create/verify a user (support action)</h3>
+      <div class="steps"><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>User</span><span class='detail'>new row (mobile_number, full_name, is_verified)</span></div><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>AdminActionLog</span><span class='detail'>action=create, entity_type=User</span></div></div>
+    </div>
+    
+    <div class="flowcard">
+      <h3>Process order status change</h3>
+      <div class="steps"><div class='step'><span class='op op-update'>UPDATE</span><span class='entity'>Order</span><span class='detail'>status</span></div><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>OrderStatusHistory</span><span class='detail'>new row (order_id, status, changed_by=admin)</span></div><div class='step'><span class='op op-insert'>INSERT/UPDATE</span><span class='entity'>Shipment</span><span class='detail'>status / tracking_code / shipped_at / delivered_at</span></div><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>AdminActionLog</span><span class='detail'>action=update, entity_type=Order</span></div></div>
+    </div>
+    
+    <div class="flowcard">
+      <h3>Record a payment result (webhook/manual)</h3>
+      <div class="steps"><div class='step'><span class='op op-update'>UPDATE</span><span class='entity'>PaymentTransaction</span><span class='detail'>status, ref_code, paid_at</span></div><div class='step'><span class='op op-update'>UPDATE</span><span class='entity'>Order</span><span class='detail'>status → paid (if transaction succeeded)</span></div><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>OrderStatusHistory</span><span class='detail'>new row (order_id, status=paid, changed_by=system)</span></div></div>
+    </div>
+    
+    <div class="flowcard">
+      <h3>Approve/reject a return request</h3>
+      <div class="steps"><div class='step'><span class='op op-update'>UPDATE</span><span class='entity'>ReturnRequest</span><span class='detail'>status → exchanged / refunded / rejected</span></div><div class='step'><span class='op op-update'>UPDATE</span><span class='entity'>Variant</span><span class='detail'>stock_qty (restock original, decrement exchange target)</span></div><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>OrderStatusHistory</span><span class='detail'>new row (order_id, status=returned) — if refunded/exchanged</span></div><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>AdminActionLog</span><span class='detail'>action=update, entity_type=ReturnRequest</span></div></div>
+    </div>
+    
+    <div class="flowcard">
+      <h3>Moderate a comment/review</h3>
+      <div class="steps"><div class='step'><span class='op op-update'>UPDATE</span><span class='entity'>Comment</span><span class='detail'>visibility/approval flag (not modeled yet — open question)</span></div><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>AdminActionLog</span><span class='detail'>action=moderate, entity_type=Comment</span></div></div>
+    </div>
+    
+  </div>
+</div>
+
+<div id="customer" class="tabpanel">
+  <div class="flows">
+    <p style="color:#666;font-size:0.92em;">Each customer action below lists the tables it touches, in order.</p>
+    
+    <div class="flowcard">
+      <h3>Register / log in via OTP</h3>
+      <div class="steps"><div class='step'><span class='op op-insert (if new)'>INSERT (if new)</span><span class='entity'>User</span><span class='detail'>new row (mobile_number, is_verified=false)</span></div><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>OTPCode</span><span class='detail'>new row (user_id, code, purpose=login/register, expires_at)</span></div><div class='step'><span class='op op-update'>UPDATE</span><span class='entity'>OTPCode</span><span class='detail'>used=true (on verification)</span></div><div class='step'><span class='op op-update'>UPDATE</span><span class='entity'>User</span><span class='detail'>is_verified=true (on first successful OTP)</span></div></div>
+    </div>
+    
+    <div class="flowcard">
+      <h3>Browse / search / filter catalog</h3>
+      <div class="steps"><div class='step'><span class='op op-select'>SELECT</span><span class='entity'>Product, Category, Variant, ProductImage</span><span class='detail'>read-only — no writes</span></div></div>
+    </div>
+    
+    <div class="flowcard">
+      <h3>Add item to cart</h3>
+      <div class="steps"><div class='step'><span class='op op-insert'>INSERT/UPDATE</span><span class='entity'>CartItem</span><span class='detail'>new row, or quantity += 1 if (user_id, variant_id) already exists</span></div></div>
+    </div>
+    
+    <div class="flowcard">
+      <h3>Add / edit a shipping address</h3>
+      <div class="steps"><div class='step'><span class='op op-insert'>INSERT/UPDATE</span><span class='entity'>Address</span><span class='detail'>new row, or update existing (recipient_name, province, city, full_address)</span></div></div>
+    </div>
+    
+    <div class="flowcard">
+      <h3>Place an order (checkout)</h3>
+      <div class="steps"><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>Order</span><span class='detail'>new row (user_id, address_id, status=placed, total_amount, payment_method)</span></div><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>OrderItem</span><span class='detail'>one row per cart line (order_id, variant_id, quantity, unit_price)</span></div><div class='step'><span class='op op-update'>UPDATE</span><span class='entity'>Variant</span><span class='detail'>stock_qty -= quantity for each item</span></div><div class='step'><span class='op op-delete'>DELETE</span><span class='entity'>CartItem</span><span class='detail'>rows for the checked-out items</span></div><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>OrderStatusHistory</span><span class='detail'>new row (order_id, status=placed, changed_by=customer)</span></div></div>
+    </div>
+    
+    <div class="flowcard">
+      <h3>Pay online (gateway redirect)</h3>
+      <div class="steps"><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>PaymentTransaction</span><span class='detail'>new row (order_id, gateway, amount, status=initiated)</span></div><div class='step'><span class='op op-update'>UPDATE</span><span class='entity'>PaymentTransaction</span><span class='detail'>status → success/failed, ref_code, paid_at (on gateway callback)</span></div><div class='step'><span class='op op-update'>UPDATE</span><span class='entity'>Order</span><span class='detail'>status → paid (if success)</span></div><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>OrderStatusHistory</span><span class='detail'>new row (order_id, status=paid, changed_by=system)</span></div></div>
+    </div>
+    
+    <div class="flowcard">
+      <h3>Track order status</h3>
+      <div class="steps"><div class='step'><span class='op op-select'>SELECT</span><span class='entity'>Order, OrderStatusHistory, Shipment</span><span class='detail'>read-only — no writes</span></div></div>
+    </div>
+    
+    <div class="flowcard">
+      <h3>Leave a review / comment</h3>
+      <div class="steps"><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>Comment</span><span class='detail'>new row (product_id, user_id, order_id?, rating, fit_feedback, body)</span></div></div>
+    </div>
+    
+    <div class="flowcard">
+      <h3>Request a return / exchange</h3>
+      <div class="steps"><div class='step'><span class='op op-insert'>INSERT</span><span class='entity'>ReturnRequest</span><span class='detail'>new row (order_item_id, reason, requested_exchange_variant_id?, status=pending)</span></div></div>
+    </div>
+    
+  </div>
+</div>
+
+<footer>
+  Draft v2 — generated for brainstorm review on 2026-10-24. Mock return-request volume is higher than a realistic return rate purely to demonstrate the flow; not a forecast. Open questions carried over from v1 (price-on-product-vs-variant, one-category-vs-many, SKU format) still apply. New open question: comment/review moderation needs an approval/visibility field once we decide if reviews are auto-published or queued.
+</footer>
+
+<script>
+  const buttons = document.querySelectorAll('.tabbtn');
+  const panels = { tables: document.getElementById('tables'), admin: document.getElementById('admin'), customer: document.getElementById('customer') };
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      buttons.forEach(b => b.classList.remove('active'));
+      Object.values(panels).forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      panels[btn.dataset.tab].classList.add('active');
+    });
+  });
+</script>
+
+</body>
+</html>
